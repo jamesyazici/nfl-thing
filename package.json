@@ -1,0 +1,9 @@
+{
+  "name": "nfl-thing",
+  "private": true,
+  "type": "module",
+  "description": "NFL Thing — private family NFL pick'em app. Static frontend (GitHub Pages) + Supabase backend. No build step, no runtime dependencies.",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}

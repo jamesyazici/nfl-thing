@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NFL Thing — Log In</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="auth-shell">
+  <div class="auth-card">
+    <h1>🏈 NFL Thing</h1>
+    <div id="form-error" class="form-error" hidden></div>
+    <form id="login-form">
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" name="username" autocomplete="username" required maxlength="32">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn--block" id="login-btn">Log In</button>
+    </form>
+    <p class="form-note">Don't have your account set up?<br><a href="create-account.html">Create Account</a></p>
+  </div>
+</div>
+<script type="module">
+  import { signInWithUsername, redirectIfAuthenticated } from './js/auth.js';
+  import { $ } from './js/utils.js';
+
+  redirectIfAuthenticated('app.html');
+
+  const form = $('#login-form');
+  const errorBox = $('#form-error');
+  const submitBtn = $('#login-btn');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorBox.hidden = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Logging in…';
+    try {
+      const username = $('#username').value;
+      const password = $('#password').value;
+      await signInWithUsername(username, password);
+      window.location.href = 'app.html';
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.hidden = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Log In';
+    }
+  });
+</script>
+</body>
+</html>

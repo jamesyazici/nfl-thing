@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NFL Thing</title>
+<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/print.css" media="print">
+</head>
+<body>
+<header class="app-header">
+  <div class="app-header__row">
+    <div class="app-header__brand">🏈 NFL Thing</div>
+    <select id="week-select" class="week-select" aria-label="Select week"></select>
+    <div class="app-header__spacer"></div>
+    <a id="admin-link" href="admin.html" class="btn btn--secondary btn--small" hidden>Admin</a>
+    <span id="current-username" class="app-header__user"></span>
+    <button id="logout-btn" class="btn btn--secondary btn--small">Logout</button>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="tab-btn" data-tab="my-picks" role="tab" aria-selected="true">My Picks</button>
+  <button class="tab-btn" data-tab="other-picks" role="tab" aria-selected="false">Other Picks</button>
+  <button class="tab-btn" data-tab="leaderboard" role="tab" aria-selected="false">Leaderboard</button>
+</nav>
+
+<main class="container">
+  <section id="panel-my-picks" class="tab-panel" role="tabpanel"></section>
+  <section id="panel-other-picks" class="tab-panel" role="tabpanel" hidden></section>
+  <section id="panel-leaderboard" class="tab-panel" role="tabpanel" hidden></section>
+</main>
+
+<div id="print-sheet"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

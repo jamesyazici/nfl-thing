@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NFL Thing — Create Account</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="auth-shell">
+  <div class="auth-card">
+    <h1>Create Account</h1>
+    <p class="form-note" style="margin-top:-8px;">Your username was created by the league administrator.</p>
+    <div id="form-error" class="form-error" hidden></div>
+    <form id="create-form">
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" name="username" required maxlength="32" placeholder="e.g. Dad">
+      </div>
+      <div class="field">
+        <label for="password">Create Password</label>
+        <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label for="confirm-password">Confirm Password</label>
+        <input id="confirm-password" name="confirm-password" type="password" required minlength="8" autocomplete="new-password">
+      </div>
+      <button type="submit" class="btn btn--block" id="create-btn">Create Account</button>
+    </form>
+    <p class="form-note">Already have an account?<br><a href="index.html">Log In</a></p>
+  </div>
+</div>
+<script type="module">
+  import { claimAccount, redirectIfAuthenticated } from './js/auth.js';
+  import { $ } from './js/utils.js';
+
+  redirectIfAuthenticated('app.html');
+
+  const form = $('#create-form');
+  const errorBox = $('#form-error');
+  const submitBtn = $('#create-btn');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorBox.hidden = true;
+
+    const username = $('#username').value;
+    const password = $('#password').value;
+    const confirmPassword = $('#confirm-password').value;
+
+    if (password !== confirmPassword) {
+      errorBox.textContent = 'Passwords do not match.';
+      errorBox.hidden = false;
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating account…';
+    try {
+      await claimAccount(username, password);
+      window.location.href = 'index.html?created=1';
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.hidden = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Create Account';
+    }
+  });
+</script>
+</body>
+</html>

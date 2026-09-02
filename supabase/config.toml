@@ -1,0 +1,29 @@
+# Supabase CLI project configuration.
+# project_id is filled in automatically by `supabase link` — see README.
+project_id = "nfl-thing"
+
+[api]
+enabled = true
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+
+# claim-account is called by someone who is NOT signed in yet (they're
+# creating their account), so there is no user JWT to verify at the gateway.
+# The function still requires the Supabase publishable key as `apikey` (sent
+# automatically by supabase-js) and does its own validation server-side.
+[functions.claim-account]
+verify_jwt = false
+
+# All other functions require a real caller identity:
+#  - admin-create-username / admin-manage-user / submit-picks: a signed-in
+#    user's JWT (verified at the gateway, then the function checks
+#    profiles.is_admin for the admin ones).
+#  - sync-nfl-games / sync-prediction-market-odds: EITHER a signed-in admin's
+#    JWT (manual trigger from admin.html) OR Supabase Cron calling in with
+#    the project's publishable key as `apikey` plus a `x-cron-secret` header
+#    the function checks against CRON_SECRET (see README "Cron setup").
+# All of those keep the default verify_jwt = true.

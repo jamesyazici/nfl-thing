@@ -1,0 +1,7 @@
+js/config.js
+.env
+.env.local
+supabase/functions/.env
+supabase/.temp/
+node_modules/
+.DS_Store
