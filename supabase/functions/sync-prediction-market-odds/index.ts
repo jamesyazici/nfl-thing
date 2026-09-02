@@ -24,17 +24,19 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: `Invalid PREDICTION_MARKET_PROVIDER: ${provider}` }, 500);
     }
 
-    // Only bother with games that haven't kicked off yet and are coming up
-    // soon (spec §38 "relevant upcoming games") — no point polling markets
-    // for a game three months out or one that's already final.
+    // Only bother with games that haven't kicked off yet (spec §38
+    // "relevant upcoming games") — a FINAL game's odds are moot. There's
+    // no further date cutoff: each provider call below fetches its whole
+    // open-events list once per sync regardless of how many of our games
+    // it gets checked against, so restricting how far out we look doesn't
+    // save any API calls — it only delays showing odds Kalshi/Polymarket
+    // already have listed well ahead of kickoff.
     const now = new Date();
-    const horizon = new Date(now.getTime() + 9 * 24 * 60 * 60 * 1000);
     const { data: games, error: gamesError } = await admin
       .from('games')
       .select('id, away_team, home_team, kickoff_at, status')
       .neq('status', 'FINAL')
-      .gte('kickoff_at', now.toISOString())
-      .lte('kickoff_at', horizon.toISOString());
+      .gte('kickoff_at', now.toISOString());
 
     if (gamesError) return jsonResponse({ error: gamesError.message }, 500);
     if (!games || games.length === 0) {
