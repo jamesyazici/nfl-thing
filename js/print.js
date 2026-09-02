@@ -7,6 +7,8 @@ import { formatRecord, formatProbabilityPercent } from '../shared/logic.js';
  * already loaded — no extra fetch. Laid out as two fixed-height columns
  * (see css/print.css) so a full 16-game week and a 13-game bye week both
  * land on exactly one page, just with more or less breathing room per row.
+ * Each pick is its own full-width line (checkbox + name + stats inline)
+ * rather than a 3-across grid, so a long name never has to wrap.
  */
 export function renderPrintSheet(state, weekData) {
   const container = document.getElementById('print-sheet');
@@ -41,6 +43,26 @@ function checkbox(checked) {
   return `<span class="print-checkbox${checked ? ' print-checkbox--checked' : ''}"></span>`;
 }
 
+function pickLine(className, checked, name, statsText) {
+  return `
+    <div class="print-pick ${className}">
+      <span class="print-pick__name">${checkbox(checked)}${escapeHtml(name)}</span>
+      ${statsText ? `<span class="print-pick__stats">${statsText}</span>` : ''}
+    </div>
+  `;
+}
+
+function statsText(game, side, odds) {
+  const record = formatRecord({
+    wins: game[`${side}_wins`],
+    losses: game[`${side}_losses`],
+    ties: game[`${side}_ties`],
+  });
+  const prob = odds ? odds[`${side}_probability_display`] : null;
+  const last5 = game[`${side}_last_5`];
+  return escapeHtml(`${record} · ${formatProbabilityPercent(prob)} · ${last5}`);
+}
+
 function buildPrintGame(game, odds, pick) {
   const started = new Date() >= new Date(game.kickoff_at);
   const awayName = teamShortName(game.away_team);
@@ -62,31 +84,9 @@ function buildPrintGame(game, odds, pick) {
   return `
     <div class="print-game">
       <div class="print-game__kickoff">${formatKickoff(game.kickoff_at)}</div>
-      <div class="print-game__row">
-        <div class="print-pick">
-          <div class="print-pick__label">${checkbox(selection === 'AWAY')}${escapeHtml(awayName)}</div>
-          ${printStatsLine(game, 'away', odds)}
-        </div>
-        <div class="print-pick print-pick--tie">
-          <div class="print-pick__label">${checkbox(selection === 'TIE')}TIE</div>
-        </div>
-        <div class="print-pick">
-          <div class="print-pick__label">${checkbox(selection === 'HOME')}${escapeHtml(homeName)}</div>
-          ${printStatsLine(game, 'home', odds)}
-        </div>
-      </div>
+      ${pickLine('', selection === 'AWAY', awayName, statsText(game, 'away', odds))}
+      ${pickLine('print-pick--tie', selection === 'TIE', 'TIE', '')}
+      ${pickLine('', selection === 'HOME', homeName, statsText(game, 'home', odds))}
     </div>
   `;
-}
-
-function printStatsLine(game, side, odds) {
-  const record = formatRecord({
-    wins: game[`${side}_wins`],
-    losses: game[`${side}_losses`],
-    ties: game[`${side}_ties`],
-  });
-  const prob = odds ? odds[`${side}_probability_display`] : null;
-  const probText = formatProbabilityPercent(prob);
-  const last5 = game[`${side}_last_5`];
-  return `<div class="print-pick__stats">${escapeHtml(record)} &middot; ${escapeHtml(probText)} &middot; ${escapeHtml(last5)}</div>`;
 }

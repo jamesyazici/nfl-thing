@@ -7,11 +7,13 @@
    Design goal: everything fits on exactly one page in large, easy-to-read
    type. A max NFL week is 16 games, so the game list is split into two
    columns of up to 8, each row sized with flexbox to fill a fixed,
-   pre-measured content height — that's what actually guarantees a
-   single page regardless of how many games there are, rather than
-   hoping font/spacing choices happen to add up right. Units are pt/in
-   throughout (not px/rem) since those are the units that print reliably
-   translates to a physical size on paper. */
+   pre-measured content height. Each pick (away/tie/home) is its own
+   full-width line — checkbox, name, and stats all inline — rather than a
+   3-across grid: a narrow per-team column is what caused longer names
+   ("Commanders", "Buccaneers") to wrap onto a second line and blow the
+   row-height budget, which was the actual cause of the sheet spilling
+   onto extra pages. Units are pt/in throughout (not px/rem) since those
+   are what print reliably translates to a physical size on paper. */
 
 @media print {
   @page {
@@ -34,77 +36,83 @@
   .print-sheet__header {
     text-align: center;
     border-bottom: 2pt solid #000;
-    padding-bottom: 4pt;
-    margin-bottom: 6pt;
+    padding-bottom: 3pt;
+    margin-bottom: 5pt;
   }
-  .print-sheet__title { font-size: 20pt; font-weight: 800; margin: 0; letter-spacing: 0.02em; }
-  .print-sheet__subtitle { font-size: 13pt; font-weight: 700; margin: 2pt 0 4pt; }
+  .print-sheet__title { font-size: 18pt; font-weight: 800; margin: 0; letter-spacing: 0.02em; }
+  .print-sheet__subtitle { font-size: 12pt; font-weight: 700; margin: 2pt 0 3pt; }
   .print-sheet__fields {
     display: flex;
     justify-content: space-between;
     gap: 24pt;
-    font-size: 11pt;
-    margin-top: 4pt;
+    font-size: 10pt;
+    margin-top: 3pt;
   }
   .print-sheet__fields span { flex: 1; border-bottom: 1pt solid #000; padding-bottom: 2pt; }
-  .print-sheet__legend { font-size: 8pt; color: #333; margin: 3pt 0 0; text-align: center; }
+  .print-sheet__legend { font-size: 7.5pt; color: #333; margin: 3pt 0 0; text-align: center; }
 
   /* Two columns of games, each column a fixed-height flex stack so every
      game's row height = (fixed column height) / (games in that column) —
      the sizes adapt automatically to however many games are in the week
-     while still always filling exactly one page, never more. */
+     while still always filling exactly one page, never more. Height is
+     deliberately conservative (8 rows of the sizes below need well under
+     this) to leave real margin for error. */
   .print-columns {
     display: flex;
-    gap: 0.25in;
-    height: 9.4in;
+    gap: 0.22in;
+    height: 8.8in;
+    overflow: hidden;
   }
   .print-column {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 4pt;
+    gap: 3pt;
     min-width: 0;
   }
 
   .print-game {
     flex: 1;
     min-height: 0;
+    max-width: 100%;
     border: 1.5pt solid #000;
     border-radius: 4pt;
-    padding: 4pt 8pt;
+    padding: 3pt 6pt;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    gap: 1.5pt;
+    overflow: hidden;
     break-inside: avoid;
     page-break-inside: avoid;
   }
   .print-game__kickoff {
     text-align: center;
-    font-size: 9pt;
+    font-size: 8.5pt;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    margin-bottom: 2pt;
   }
-  .print-game__row {
-    display: grid;
-    grid-template-columns: 1fr 0.6fr 1fr;
-    align-items: start;
-    text-align: center;
-    column-gap: 4pt;
+  .print-pick {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6pt;
+    white-space: nowrap;
+    overflow: hidden;
   }
-  .print-pick__label {
-    font-size: 15pt;
+  .print-pick__name {
+    font-size: 16pt;
     font-weight: 800;
-    line-height: 1.15;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .print-pick--tie .print-pick__label { font-size: 12pt; }
+  .print-pick--tie .print-pick__name { font-size: 11pt; }
   .print-pick__stats {
-    font-size: 8pt;
-    font-weight: 400;
-    color: #222;
-    line-height: 1.3;
-    margin-top: 1pt;
+    font-size: 11pt;
+    font-weight: 600;
+    color: #000;
+    flex-shrink: 0;
   }
   .print-checkbox {
     display: inline-block;
@@ -114,7 +122,8 @@
     margin-right: 4pt;
     vertical-align: middle;
     position: relative;
-    top: -1pt;
+    top: -1.5pt;
+    flex-shrink: 0;
   }
   .print-checkbox--checked::after {
     content: "X";
@@ -127,7 +136,7 @@
   .print-game__started {
     text-align: center;
     font-weight: 800;
-    font-size: 11pt;
+    font-size: 10.5pt;
     padding: 4pt;
     border: 1.5pt dashed #000;
     border-radius: 3pt;
