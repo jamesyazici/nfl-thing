@@ -184,7 +184,7 @@ returns table (
   total_counted bigint,
   win_rate numeric,
   avg_finish numeric,
-  position bigint
+  podium_rank bigint
 )
 language sql
 stable
@@ -200,10 +200,10 @@ as $$
     sus.avg_finish,
     row_number() over (
       order by sus.win_rate desc, sus.avg_finish asc, prof.normalized_username asc
-    ) as position
+    ) as podium_rank
   from public.season_user_stats() sus
   join public.profiles prof on prof.id = sus.user_id
-  order by position
+  order by podium_rank
   limit 3;
 $$;
 
@@ -215,7 +215,7 @@ returns table (
   win_rate numeric,
   total_correct bigint,
   total_counted bigint,
-  position bigint
+  podium_rank bigint
 )
 language sql
 stable
@@ -231,10 +231,10 @@ as $$
     sus.total_counted,
     row_number() over (
       order by sus.avg_finish asc, sus.win_rate desc, prof.normalized_username asc
-    ) as position
+    ) as podium_rank
   from public.season_user_stats() sus
   join public.profiles prof on prof.id = sus.user_id
-  order by position
+  order by podium_rank
   limit 3;
 $$;
 

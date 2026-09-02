@@ -132,8 +132,12 @@ Neither Kalshi nor Polymarket requires an API key for the read-only market
 data this app uses — no account signup needed for either. If a future API
 change requires credentials, add them the same way with `supabase secrets set`.
 
-`js/config.js` and `supabase/functions/.env` are both gitignored — copy from
-the `.example` versions and never commit real values.
+`js/config.js` **is committed** (copy it from `js/config.example.js`) — unlike
+every other value in this table, the URL and publishable key aren't secret
+(they're protected by Row Level Security, not by staying hidden), and since
+this app has no build step, GitHub Pages serves whatever is actually
+committed in that file. `supabase/functions/.env` is the one that's
+gitignored — never commit real values there.
 
 ---
 
