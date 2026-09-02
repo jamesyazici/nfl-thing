@@ -42,13 +42,12 @@
   .print-sheet__header {
     display: flex;
     align-items: baseline;
-    gap: 10pt;
-    font-size: 9.5pt;
-    margin-bottom: 3pt;
+    margin-bottom: 4pt;
   }
-  .print-sheet__header strong { font-size: 10.5pt; }
   .print-sheet__header .print-sheet__name-line {
     flex: 1;
+    font-size: 13pt;
+    font-weight: 700;
     border-bottom: 1pt solid #000;
     padding-bottom: 1pt;
   }

@@ -13,11 +13,10 @@ import { formatRecord, formatProbabilityPercent } from '../shared/logic.js';
 export function renderPrintSheet(state, weekData) {
   const container = document.getElementById('print-sheet');
   if (!container) return;
-  const { week, games, oddsByGame, picksByGame } = weekData;
+  const { games, oddsByGame, picksByGame } = weekData;
 
   const header = `
     <div class="print-sheet__header">
-      <strong>Week ${escapeHtml(String(week))}</strong>
       <span class="print-sheet__name-line">Name: </span>
     </div>
   `;
