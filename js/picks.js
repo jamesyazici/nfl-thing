@@ -98,7 +98,11 @@ function statsColumnHtml(game, side, odds) {
   const ties = game[`${side}_ties`];
   const last5 = game[`${side}_last_5`];
   const record = formatRecord({ wins, losses, ties });
-  const providerLabel = odds?.provider === 'kalshi' ? 'Kalshi' : odds?.provider === 'polymarket' ? 'Polymarket' : null;
+  // Shown to family members as plain "Odds" rather than naming the
+  // provider (Kalshi/Polymarket) — most people don't know what those are,
+  // and the app never displays sportsbook-style odds anyway, just this
+  // implied win probability, so the generic label reads more clearly here.
+  const providerLabel = odds?.provider === 'kalshi' || odds?.provider === 'polymarket' ? 'Odds' : null;
   const prob = odds ? odds[`${side}_probability_display`] : null;
   return `
     <div class="game-card__stats-col">
