@@ -1,5 +1,19 @@
 /* NFL Thing — shared styles. Plain CSS, no framework. */
 
+/* The printable pick sheet (built by js/print.js, styled by css/print.css)
+   lives in the DOM at all times so print.js can fill it in before
+   window.print() is called, but must stay fully out of the way on screen.
+   This MUST live here, not in print.css — print.css's <link> tag is itself
+   media="print", so a rule for the *normal* (screen) state doesn't belong
+   in that file at all; putting it there previously caused this same
+   selector to also apply during printing (same specificity, later in
+   source order), pushing the sheet off-page and printing a blank page. */
+#print-sheet {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+}
+
 :root {
   --color-bg: #0f1720;
   --color-surface: #17212c;

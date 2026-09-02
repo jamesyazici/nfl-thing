@@ -1,12 +1,22 @@
 /* Blank/submitted pick-sheet print layout (spec §63-§69). Loaded with
    media="print" — see app.html — so it never affects on-screen styles.
-   The printable DOM lives in a normally-hidden #print-sheet container that
-   print.js fills in and print.css is the ONLY thing that makes visible. */
+   The printable DOM lives in a normally-hidden #print-sheet container
+   (kept off-screen by the rule in styles.css, NOT here) that print.js
+   fills in and this file is the only thing that makes visible.
+
+   Design goal: everything fits on exactly one page in large, easy-to-read
+   type. A max NFL week is 16 games, so the game list is split into two
+   columns of up to 8, each row sized with flexbox to fill a fixed,
+   pre-measured content height — that's what actually guarantees a
+   single page regardless of how many games there are, rather than
+   hoping font/spacing choices happen to add up right. Units are pt/in
+   throughout (not px/rem) since those are the units that print reliably
+   translates to a physical size on paper. */
 
 @media print {
   @page {
     size: letter portrait;
-    margin: 0.5in;
+    margin: 0.35in;
   }
 
   body * { visibility: hidden; }
@@ -15,87 +25,111 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
+    width: 7.8in;
     color: #000;
     background: #fff;
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: Arial, Helvetica, sans-serif;
   }
 
   .print-sheet__header {
     text-align: center;
-    border-bottom: 2px solid #000;
-    padding-bottom: 12px;
-    margin-bottom: 16px;
+    border-bottom: 2pt solid #000;
+    padding-bottom: 4pt;
+    margin-bottom: 6pt;
   }
-  .print-sheet__title { font-size: 1.4rem; font-weight: 800; margin: 0; }
-  .print-sheet__subtitle { font-size: 1rem; margin: 4px 0 16px; }
+  .print-sheet__title { font-size: 20pt; font-weight: 800; margin: 0; letter-spacing: 0.02em; }
+  .print-sheet__subtitle { font-size: 13pt; font-weight: 700; margin: 2pt 0 4pt; }
   .print-sheet__fields {
     display: flex;
     justify-content: space-between;
-    font-size: 0.95rem;
-    margin-top: 12px;
+    gap: 24pt;
+    font-size: 11pt;
+    margin-top: 4pt;
   }
-  .print-sheet__fields span { border-bottom: 1px solid #000; padding-bottom: 2px; min-width: 45%; }
+  .print-sheet__fields span { flex: 1; border-bottom: 1pt solid #000; padding-bottom: 2pt; }
+  .print-sheet__legend { font-size: 8pt; color: #333; margin: 3pt 0 0; text-align: center; }
+
+  /* Two columns of games, each column a fixed-height flex stack so every
+     game's row height = (fixed column height) / (games in that column) —
+     the sizes adapt automatically to however many games are in the week
+     while still always filling exactly one page, never more. */
+  .print-columns {
+    display: flex;
+    gap: 0.25in;
+    height: 9.4in;
+  }
+  .print-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4pt;
+    min-width: 0;
+  }
 
   .print-game {
-    border: 1px solid #000;
-    border-radius: 4px;
-    padding: 10px 14px;
-    margin-bottom: 10px;
+    flex: 1;
+    min-height: 0;
+    border: 1.5pt solid #000;
+    border-radius: 4pt;
+    padding: 4pt 8pt;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     break-inside: avoid;
     page-break-inside: avoid;
   }
   .print-game__kickoff {
     text-align: center;
-    font-size: 0.8rem;
+    font-size: 9pt;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 8px;
+    letter-spacing: 0.03em;
+    margin-bottom: 2pt;
   }
   .print-game__row {
     display: grid;
-    grid-template-columns: 1fr 0.5fr 1fr;
-    align-items: center;
+    grid-template-columns: 1fr 0.6fr 1fr;
+    align-items: start;
     text-align: center;
-    font-weight: 700;
-    font-size: 1rem;
+    column-gap: 4pt;
+  }
+  .print-pick__label {
+    font-size: 15pt;
+    font-weight: 800;
+    line-height: 1.15;
+  }
+  .print-pick--tie .print-pick__label { font-size: 12pt; }
+  .print-pick__stats {
+    font-size: 8pt;
+    font-weight: 400;
+    color: #222;
+    line-height: 1.3;
+    margin-top: 1pt;
   }
   .print-checkbox {
     display: inline-block;
-    width: 14px;
-    height: 14px;
-    border: 1.5px solid #000;
-    margin-right: 6px;
+    width: 13pt;
+    height: 13pt;
+    border: 2pt solid #000;
+    margin-right: 4pt;
     vertical-align: middle;
+    position: relative;
+    top: -1pt;
   }
-  .print-checkbox--checked { position: relative; }
   .print-checkbox--checked::after {
     content: "X";
     position: absolute;
-    left: 1px;
-    top: -5px;
-    font-size: 12px;
-  }
-  .print-game__stats {
-    display: grid;
-    grid-template-columns: 1fr 0.5fr 1fr;
-    text-align: center;
-    font-size: 0.75rem;
-    margin-top: 8px;
-    color: #333;
+    left: 1.5pt;
+    top: -3.5pt;
+    font-size: 13pt;
+    font-weight: 800;
   }
   .print-game__started {
     text-align: center;
     font-weight: 800;
-    padding: 6px;
-    border: 1.5px dashed #000;
-    margin-top: 4px;
+    font-size: 11pt;
+    padding: 4pt;
+    border: 1.5pt dashed #000;
+    border-radius: 3pt;
   }
-}
-
-/* Outside of print, the sheet stays fully out of the flow/off-screen. */
-#print-sheet {
-  position: fixed;
-  left: -9999px;
-  top: 0;
 }

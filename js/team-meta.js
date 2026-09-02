@@ -40,3 +40,10 @@ export const TEAM_NAMES = {
 export function teamName(abbr) {
   return TEAM_NAMES[abbr] ?? abbr;
 }
+
+/** Just the mascot ("Patriots", "49ers") — short enough for large print type, still more recognizable than the bare abbreviation. */
+export function teamShortName(abbr) {
+  const full = teamName(abbr);
+  const parts = full.split(' ');
+  return parts[parts.length - 1];
+}
