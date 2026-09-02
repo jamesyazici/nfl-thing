@@ -52,7 +52,6 @@
     border-bottom: 1pt solid #000;
     padding-bottom: 1pt;
   }
-  .print-sheet__legend { font-size: 7.5pt; color: #333; margin: 0 0 4pt; text-align: center; }
 
   /* Two columns of games, each column a fixed-height flex stack so every
      game's row height = (fixed column height) / (games in that column) —
@@ -63,7 +62,7 @@
   .print-columns {
     display: flex;
     gap: 0.22in;
-    height: 9.3in;
+    height: 9.4in;
     overflow: hidden;
   }
   .print-column {

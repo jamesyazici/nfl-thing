@@ -20,7 +20,6 @@ export function renderPrintSheet(state, weekData) {
       <strong>Week ${escapeHtml(String(week))}</strong>
       <span class="print-sheet__name-line">Name: </span>
     </div>
-    <p class="print-sheet__legend">Record shown entering the game, current win probability, and last 5 game results reading left to right, oldest to newest</p>
   `;
 
   const gameBlocks = games.map((g) => buildPrintGame(g, oddsByGame?.get(g.id), picksByGame?.get(g.id)));
