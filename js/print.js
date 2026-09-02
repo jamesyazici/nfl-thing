@@ -13,18 +13,14 @@ import { formatRecord, formatProbabilityPercent } from '../shared/logic.js';
 export function renderPrintSheet(state, weekData) {
   const container = document.getElementById('print-sheet');
   if (!container) return;
-  const { season, week, games, oddsByGame, picksByGame } = weekData;
+  const { week, games, oddsByGame, picksByGame } = weekData;
 
   const header = `
     <div class="print-sheet__header">
-      <p class="print-sheet__title">NFL THING</p>
-      <p class="print-sheet__subtitle">${escapeHtml(String(season))} — WEEK ${escapeHtml(String(week))}</p>
-      <div class="print-sheet__fields">
-        <span>Name: ${escapeHtml(state.profile?.username ?? '')}</span>
-        <span>Printed: ${new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' })}</span>
-      </div>
+      <strong>Week ${escapeHtml(String(week))}</strong>
+      <span class="print-sheet__name-line">Name: </span>
     </div>
-    <p class="print-sheet__legend">Record shown entering this game &middot; % is current win probability where available &middot; Last 5 reads oldest-to-newest, left-to-right</p>
+    <p class="print-sheet__legend">Record shown entering the game, current win probability, and last 5 game results reading left to right, oldest to newest</p>
   `;
 
   const gameBlocks = games.map((g) => buildPrintGame(g, oddsByGame?.get(g.id), picksByGame?.get(g.id)));

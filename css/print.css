@@ -21,12 +21,18 @@
     margin: 0.35in;
   }
 
-  body * { visibility: hidden; }
-  #print-sheet, #print-sheet * { visibility: visible; }
+  /* Removing every OTHER top-level element from the page (rather than just
+     hiding it with visibility:hidden) is what actually matters here:
+     visibility:hidden keeps an element's box taking up its normal space in
+     the page flow even though it's invisible, so the rest of the app (the
+     header, tabs, whichever tab's content, modals, ...) was still forcing
+     several extra blank pages worth of layout height. display:none removes
+     it from the flow entirely, so the page is exactly as tall as
+     #print-sheet's own content and nothing more. */
+  body > *:not(#print-sheet) { display: none !important; }
   #print-sheet {
-    position: absolute;
-    top: 0;
-    left: 0;
+    display: block !important;
+    position: static !important;
     width: 7.8in;
     color: #000;
     background: #fff;
@@ -34,22 +40,19 @@
   }
 
   .print-sheet__header {
-    text-align: center;
-    border-bottom: 2pt solid #000;
-    padding-bottom: 3pt;
-    margin-bottom: 5pt;
-  }
-  .print-sheet__title { font-size: 18pt; font-weight: 800; margin: 0; letter-spacing: 0.02em; }
-  .print-sheet__subtitle { font-size: 12pt; font-weight: 700; margin: 2pt 0 3pt; }
-  .print-sheet__fields {
     display: flex;
-    justify-content: space-between;
-    gap: 24pt;
-    font-size: 10pt;
-    margin-top: 3pt;
+    align-items: baseline;
+    gap: 10pt;
+    font-size: 9.5pt;
+    margin-bottom: 3pt;
   }
-  .print-sheet__fields span { flex: 1; border-bottom: 1pt solid #000; padding-bottom: 2pt; }
-  .print-sheet__legend { font-size: 7.5pt; color: #333; margin: 3pt 0 0; text-align: center; }
+  .print-sheet__header strong { font-size: 10.5pt; }
+  .print-sheet__header .print-sheet__name-line {
+    flex: 1;
+    border-bottom: 1pt solid #000;
+    padding-bottom: 1pt;
+  }
+  .print-sheet__legend { font-size: 7.5pt; color: #333; margin: 0 0 4pt; text-align: center; }
 
   /* Two columns of games, each column a fixed-height flex stack so every
      game's row height = (fixed column height) / (games in that column) —
@@ -60,7 +63,7 @@
   .print-columns {
     display: flex;
     gap: 0.22in;
-    height: 8.8in;
+    height: 9.3in;
     overflow: hidden;
   }
   .print-column {
