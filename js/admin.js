@@ -87,9 +87,10 @@ function renderReserveForm() {
   const el = $('#section-reserve');
   el.innerHTML = `
     <h2>Reserve a Username</h2>
-    <p>Create a username here, then tell the family member what it is. They'll set their own password on the Create Account page.</p>
+    <p>Create a username here. Set a password now to hand them a ready-to-use login yourself, or leave it blank and they can set their own on the Create Account page.</p>
     <form class="inline-form" id="reserve-form">
       <input id="reserve-username" placeholder="Username" maxlength="32" required>
+      <input id="reserve-password" type="password" placeholder="Password (optional)" minlength="8">
       <label><input type="checkbox" id="reserve-is-admin"> Grant admin</label>
       <button type="submit" class="btn btn--small">Reserve</button>
     </form>
@@ -98,10 +99,23 @@ function renderReserveForm() {
   $('#reserve-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = $('#reserve-username').value;
+    const password = $('#reserve-password').value;
     const isAdmin = $('#reserve-is-admin').checked;
+    if (password && password.length < 8) {
+      toast('Password must be at least 8 characters (or leave it blank).', 'error');
+      return;
+    }
     try {
-      await callFunction('admin-create-username', { username, is_admin: isAdmin });
-      toast(`Reserved "${username}".`, 'success');
+      const result = await callFunction('admin-create-username', {
+        username,
+        is_admin: isAdmin,
+        password: password || undefined,
+      });
+      if (result.password_warning) {
+        toast(result.password_warning, 'error');
+      } else {
+        toast(password ? `"${username}" created and ready to log in.` : `Reserved "${username}".`, 'success');
+      }
       $('#reserve-form').reset();
       await renderUsersTable();
     } catch (err) {
@@ -135,6 +149,7 @@ async function renderUsersTable() {
           ${u.is_admin ? '<span class="badge badge--admin">Admin</span>' : ''}
         </td>
         <td>
+          <button class="btn btn--small" data-action="set_password" data-id="${u.id}" data-username="${escapeHtml(u.username)}">${u.claimed ? 'Reset Password' : 'Set Password'}</button>
           ${u.is_active
             ? `<button class="btn btn--small btn--secondary" data-action="deactivate" data-id="${u.id}">Deactivate</button>`
             : `<button class="btn btn--small btn--secondary" data-action="reactivate" data-id="${u.id}">Reactivate</button>`}
@@ -156,12 +171,28 @@ async function renderUsersTable() {
   $all('button[data-action]', el).forEach((btn) => {
     btn.addEventListener('click', async () => {
       const action = btn.dataset.action;
+      const payload = { allowed_user_id: btn.dataset.id, action };
+
       if (action === 'release' && !confirm('Release this account? The username can then be claimed again from scratch, and the person will need to create a new password.')) {
         return;
       }
+      if (action === 'set_password') {
+        const password = prompt(`New password for "${btn.dataset.username}" (min 8 characters):`);
+        if (!password) return; // cancelled
+        if (password.length < 8) {
+          toast('Password must be at least 8 characters.', 'error');
+          return;
+        }
+        payload.password = password;
+      }
+
       try {
-        await callFunction('admin-manage-user', { allowed_user_id: btn.dataset.id, action });
-        toast('Done.', 'success');
+        const result = await callFunction('admin-manage-user', payload);
+        if (action === 'set_password') {
+          toast(result.mode === 'claimed' ? 'Account created — ready to log in.' : 'Password updated.', 'success');
+        } else {
+          toast('Done.', 'success');
+        }
         await renderUsersTable();
       } catch (err) {
         toast(err.message, 'error');
