@@ -91,3 +91,27 @@ export function textMentionsTeam(text, abbr) {
 export function teamName(abbr) {
   return TEAMS_BY_ABBR.get(abbr)?.name ?? abbr;
 }
+
+/**
+ * Matches a single short label (e.g. a market's "yes_sub_title" naming just
+ * one side) against a team, tolerating truncation — some providers cap this
+ * kind of field at a fixed length (observed: Kalshi truncates "Los Angeles
+ * Rams" to "Los Angeles R" at 13 characters), so an exact/token match isn't
+ * enough. Requires at least 6 characters before accepting a prefix match,
+ * so short labels can't spuriously prefix-match an unrelated long alias.
+ */
+export function shortLabelMatchesTeam(label, abbr) {
+  const normalizedLabel = normalizeToken(label);
+  if (!normalizedLabel) return false;
+  const aliases = normalizedAliasesFor(abbr);
+  for (const alias of aliases) {
+    if (!alias) continue;
+    if (normalizedLabel === alias) return true;
+    if (alias.includes(' ')) {
+      if (alias.startsWith(normalizedLabel) && normalizedLabel.length >= 6) return true;
+    } else if (normalizedLabel.split(' ').includes(alias)) {
+      return true;
+    }
+  }
+  return false;
+}

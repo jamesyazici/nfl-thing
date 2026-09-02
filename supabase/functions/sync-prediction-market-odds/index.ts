@@ -65,10 +65,6 @@ Deno.serve(async (req) => {
         summary.providers_written[name] = { error: String(err) };
         return;
       }
-      if (entries.length === 0) {
-        summary.providers_written[name] = 0;
-        return;
-      }
 
       const mappingRows = entries
         .map((e) => ({
@@ -90,6 +86,7 @@ Deno.serve(async (req) => {
           .upsert(mappingRows, { onConflict: 'game_id,provider' });
       }
 
+      const fetchedAt = new Date().toISOString();
       const oddsRows = entries.map((e) => {
         const display = normalizeDisplayProbabilities({
           away: e.away_probability_raw,
@@ -115,11 +112,45 @@ Deno.serve(async (req) => {
           tie_ask: e.tie_ask,
           tie_last: e.tie_last,
           derivation_method: e.derivation_method,
-          fetched_at: new Date().toISOString(),
+          fetched_at: fetchedAt,
         };
       });
-      await admin.from('prediction_market_odds').upsert(oddsRows, { onConflict: 'game_id,provider' });
-      summary.providers_written[name] = oddsRows.length;
+
+      // A game this provider genuinely has no confident match for still
+      // gets a row — all-null — so the frontend can show "Kalshi: —"
+      // (spec §28/§37) instead of just omitting the line, which read as
+      // though the feature were silently missing rather than "checked,
+      // nothing there yet."
+      const matchedIds = new Set(entries.map((e) => e.game_id));
+      const placeholderRows = gamesForProvider
+        .filter((g) => !matchedIds.has(g.id))
+        .map((g) => ({
+          game_id: g.id,
+          provider: name,
+          away_probability_raw: null,
+          home_probability_raw: null,
+          tie_probability_raw: null,
+          away_probability_display: null,
+          home_probability_display: null,
+          tie_probability_display: null,
+          away_bid: null,
+          away_ask: null,
+          away_last: null,
+          home_bid: null,
+          home_ask: null,
+          home_last: null,
+          tie_bid: null,
+          tie_ask: null,
+          tie_last: null,
+          derivation_method: null,
+          fetched_at: fetchedAt,
+        }));
+
+      const allRows = [...oddsRows, ...placeholderRows];
+      if (allRows.length > 0) {
+        await admin.from('prediction_market_odds').upsert(allRows, { onConflict: 'game_id,provider' });
+      }
+      summary.providers_written[name] = { matched: oddsRows.length, unmatched: placeholderRows.length };
     };
 
     if (provider === 'kalshi') {
@@ -140,7 +171,7 @@ Deno.serve(async (req) => {
       if (remainingGames.length > 0) {
         await runProvider('polymarket', syncPolymarketOdds, remainingGames);
       } else {
-        summary.providers_written.polymarket = 0;
+        summary.providers_written.polymarket = { matched: 0, unmatched: 0 };
       }
     }
 

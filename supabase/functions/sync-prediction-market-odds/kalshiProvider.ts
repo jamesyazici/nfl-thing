@@ -6,7 +6,7 @@
 // looks it up by category/tag each run and every game-to-event match
 // requires BOTH team names to appear in the event text — an event that
 // doesn't clear that bar is simply skipped, never guessed at.
-import { textMentionsTeam } from '../_shared/teamMeta.ts';
+import { textMentionsTeam, shortLabelMatchesTeam } from '../_shared/teamMeta.ts';
 import { deriveKalshiProbability } from '../_shared/logic.ts';
 
 const DEFAULT_BASE = 'https://external-api.kalshi.com/trade-api/v2';
@@ -34,14 +34,38 @@ async function fetchJson(url) {
   return res.json();
 }
 
+// A per-game PROP series (field goals, sacks, touchdowns, "game specials",
+// viewership, ...) generates its own event with the exact same team-vs-team
+// title/subtitle as the real full-game winner series for that same game —
+// so matching on event text alone can't tell them apart, and multiple
+// candidates for one game would (correctly) be treated as ambiguous and
+// skipped. The distinguishing signal is one level up, on the SERIES title:
+// the bare game-winner series reads as just "<sport> Game" with nothing
+// else added, where every prop series adds a stat/qualifier noun. This
+// reasons about the label's shape rather than hardcoding Kalshi's specific
+// ticker string.
+function isBareGameSeries(title) {
+  const stripped = String(title ?? '')
+    .toLowerCase()
+    .replace(/\bpro(fessional)?\s+football\b/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+  return stripped === 'game' || stripped === '';
+}
+
 async function discoverNflSeriesTickers(baseUrl) {
   const found = new Set();
   for (const category of ['Sports', 'sports']) {
     try {
-      const data = await fetchJson(`${baseUrl}/series?category=${encodeURIComponent(category)}`);
+      const data = await fetchJson(`${baseUrl}/series?category=${encodeURIComponent(category)}&limit=1000`);
       for (const series of data.series ?? []) {
-        const text = `${series.title ?? ''} ${(series.tags ?? []).join(' ')}`.toLowerCase();
-        if (text.includes('nfl') || text.includes('national football league')) {
+        // Kalshi's NFL series tickers all contain "NFL" (e.g. KXNFLGAME),
+        // but the human-readable title often doesn't literally say "NFL"
+        // (e.g. KXNFLGAME's title is just "Professional Football Game") —
+        // so the ticker itself has to be part of what we check.
+        const text = `${series.ticker ?? ''} ${series.title ?? ''} ${(series.tags ?? []).join(' ')}`.toLowerCase();
+        const isNfl = text.includes('nfl') || text.includes('national football league');
+        if (isNfl && isBareGameSeries(series.title ?? '')) {
           found.add(series.ticker);
         }
       }
@@ -100,15 +124,15 @@ function splitAwayHomeTieMarkets(event, game) {
   const markets = (event.markets ?? []).filter((m) =>
     isMoneylineText(m.title ?? '', m.yes_sub_title ?? '', m.no_sub_title ?? ''),
   );
-  const describe = (m) => `${m.yes_sub_title ?? ''} ${m.title ?? ''}`;
-  const tieMarket = markets.find((m) => /\btie\b/i.test(describe(m)));
+  // Kalshi's per-team market `title` names BOTH teams (e.g. "New England vs
+  // Seattle Pro Football game: Seattle wins?"), so it can't be used to tell
+  // which side a specific market is about. `yes_sub_title` names only the
+  // one team that market's YES side represents — use that alone.
+  const sideLabel = (m) => m.yes_sub_title || m.title || '';
+  const tieMarket = markets.find((m) => /\btie\b/i.test(sideLabel(m)));
   const nonTie = markets.filter((m) => m !== tieMarket);
-  const awayMarket = nonTie.find(
-    (m) => textMentionsTeam(describe(m), game.away_team) && !textMentionsTeam(describe(m), game.home_team),
-  );
-  const homeMarket = nonTie.find(
-    (m) => textMentionsTeam(describe(m), game.home_team) && !textMentionsTeam(describe(m), game.away_team),
-  );
+  const awayMarket = nonTie.find((m) => shortLabelMatchesTeam(sideLabel(m), game.away_team));
+  const homeMarket = nonTie.find((m) => shortLabelMatchesTeam(sideLabel(m), game.home_team));
   return { awayMarket, homeMarket, tieMarket };
 }
 
@@ -178,14 +202,19 @@ export async function syncKalshiOdds(games, existingMappingsByGameId) {
     const { awayMarket, homeMarket, tieMarket } = splitAwayHomeTieMarkets(event, game);
     if (!awayMarket || !homeMarket) continue;
 
-    const closeTime = awayMarket.close_time ?? event.markets?.[0]?.close_time;
-    const hoursDiff = closeTime
-      ? Math.abs(new Date(closeTime).getTime() - new Date(game.kickoff_at).getTime()) / 3600000
+    // Kalshi's market `close_time` is set well AFTER kickoff (it stays open
+    // until the game result is final, e.g. ~2 days later for this market
+    // type) — not a kickoff-adjacent timestamp, so it can't use a tight
+    // tolerance. expected_expiration_time/occurrence_datetime run only a
+    // few hours after kickoff when present and are preferred. Either way,
+    // division rivals play twice a season many weeks apart, so even a
+    // generous same-week tolerance still tells the two meetings apart.
+    const referenceTime =
+      awayMarket.expected_expiration_time ?? awayMarket.occurrence_datetime ?? awayMarket.close_time ?? event.markets?.[0]?.close_time;
+    const hoursDiff = referenceTime
+      ? Math.abs(new Date(referenceTime).getTime() - new Date(game.kickoff_at).getTime()) / 3600000
       : null;
-    // Division rivals play twice a season, so team-name matching alone can't
-    // tell the two meetings apart — require the market to close close to
-    // this specific game's kickoff too.
-    const dateScore = hoursDiff == null ? 0.2 : hoursDiff <= 30 ? 0.4 : 0;
+    const dateScore = hoursDiff == null ? 0.2 : hoursDiff <= 96 ? 0.4 : 0;
     const confidence = Math.min(1, 0.3 + 0.3 + dateScore);
     if (confidence < 0.7) continue;
 
