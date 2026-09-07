@@ -305,8 +305,8 @@ table.other-picks td:first-child, table.other-picks th:first-child {
 .other-picks-cell--incorrect { color: var(--color-incorrect); }
 .other-picks-cell--forfeit { color: var(--color-text-muted); font-style: italic; }
 .other-picks-cell--pending { color: var(--color-text-muted); }
-.other-picks-cell--away { background: rgba(255, 255, 255, 0.07); }
-.other-picks-cell--home { background: rgba(63, 169, 245, 0.14); }
+.other-picks-cell--away { background: rgba(255, 255, 255, 0.13); }
+.other-picks-cell--home { background: rgba(63, 169, 245, 0.22); }
 
 .locked-panel {
   text-align: center;
