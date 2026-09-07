@@ -109,6 +109,14 @@
     text-overflow: ellipsis;
   }
   .print-pick--tie .print-pick__name { font-size: 11pt; }
+  .print-pick__side {
+    font-size: 8pt;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #444;
+    margin-left: 5pt;
+  }
   .print-pick__stats {
     font-size: 11pt;
     font-weight: 600;

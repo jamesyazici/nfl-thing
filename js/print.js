@@ -37,10 +37,11 @@ function checkbox(checked) {
   return `<span class="print-checkbox${checked ? ' print-checkbox--checked' : ''}"></span>`;
 }
 
-function pickLine(className, checked, name, statsText) {
+function pickLine(className, checked, name, statsText, side) {
+  const sideTag = side ? `<span class="print-pick__side">${side}</span>` : '';
   return `
     <div class="print-pick ${className}">
-      <span class="print-pick__name">${checkbox(checked)}${escapeHtml(name)}</span>
+      <span class="print-pick__name">${checkbox(checked)}${escapeHtml(name)}${sideTag}</span>
       ${statsText ? `<span class="print-pick__stats">${statsText}</span>` : ''}
     </div>
   `;
@@ -78,9 +79,9 @@ function buildPrintGame(game, odds, pick) {
   return `
     <div class="print-game">
       <div class="print-game__kickoff">${formatKickoff(game.kickoff_at)}</div>
-      ${pickLine('', selection === 'AWAY', awayName, statsText(game, 'away', odds))}
+      ${pickLine('', selection === 'AWAY', awayName, statsText(game, 'away', odds), 'Away')}
       ${pickLine('print-pick--tie', selection === 'TIE', 'TIE', '')}
-      ${pickLine('', selection === 'HOME', homeName, statsText(game, 'home', odds))}
+      ${pickLine('', selection === 'HOME', homeName, statsText(game, 'home', odds), 'Home')}
     </div>
   `;
 }

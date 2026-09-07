@@ -137,6 +137,7 @@ function buildGameCardHtml(game, odds, submission, pick) {
 
   const optionHtml = (value, label, disabled, selected) => `
     <label class="pick-option ${value === 'TIE' ? 'pick-option--tie' : ''} ${selected ? 'pick-option--selected' : ''} ${disabled ? 'pick-option--disabled' : ''}" data-value="${value}">
+      ${value !== 'TIE' ? `<span class="pick-option__side">${value === 'AWAY' ? 'Away' : 'Home'}</span>` : ''}
       <input type="radio" name="pick-${game.id}" value="${value}" ${selected ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
       <span class="pick-option__label">${escapeHtml(label)}</span>
     </label>
