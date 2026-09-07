@@ -1,5 +1,5 @@
 import { supabase } from './supabase-client.js';
-import { escapeHtml } from './utils.js';
+import { escapeHtml, displayUsername } from './utils.js';
 
 export async function render(panel, state) {
   const { season, week } = state;
@@ -41,7 +41,7 @@ export async function render(panel, state) {
   const pickLookup = new Map((picks ?? []).map((p) => [`${p.user_id}:${p.game_id}`, p]));
   const users = profiles ?? [];
 
-  const headerCells = users.map((u) => `<th>${escapeHtml(u.username)}</th>`).join('');
+  const headerCells = users.map((u) => `<th>${escapeHtml(displayUsername(u.username))}</th>`).join('');
   const rows = games
     .map((g) => {
       const cells = users

@@ -8,6 +8,18 @@ export function $all(selector, root = document) {
   return [...root.querySelectorAll(selector)];
 }
 
+/**
+ * Usernames can't contain spaces (the create-account charset is letters,
+ * numbers, underscore, hyphen), so a family member like "Aunt-Sheryl" uses
+ * a hyphen as a stand-in for one. Wherever a username is shown as a *name*
+ * (Other Picks columns, Leaderboard, the header greeting) rather than as a
+ * literal login credential, display it with hyphens turned back into
+ * spaces — the stored/login username itself never changes.
+ */
+export function displayUsername(username) {
+  return String(username ?? '').replace(/-/g, ' ');
+}
+
 /** Kickoff times are always shown in Eastern Time, regardless of the viewer's own timezone (spec §15). */
 export function formatKickoff(iso) {
   const d = new Date(iso);

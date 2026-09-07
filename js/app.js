@@ -1,6 +1,6 @@
 import { requireSession, signOut, getMyProfile } from './auth.js';
 import { supabase } from './supabase-client.js';
-import { $, $all, toast } from './utils.js';
+import { $, $all, toast, displayUsername } from './utils.js';
 import * as picksTab from './picks.js';
 import * as otherPicksTab from './other-picks.js';
 import * as leaderboardTab from './leaderboard.js';
@@ -21,7 +21,7 @@ async function init() {
     return;
   }
 
-  $('#current-username').textContent = state.profile.username;
+  $('#current-username').textContent = displayUsername(state.profile.username);
   if (state.profile.is_admin) {
     $('#admin-link').hidden = false;
   }

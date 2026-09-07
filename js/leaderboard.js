@@ -1,5 +1,5 @@
 import { supabase } from './supabase-client.js';
-import { escapeHtml } from './utils.js';
+import { escapeHtml, displayUsername } from './utils.js';
 import { formatPercent, formatAvgFinish } from '../shared/logic.js';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -45,7 +45,7 @@ function renderPodium(rows, state, describe) {
       return `
         <div class="podium-card podium-card--${i + 1} ${isSelf ? 'podium-card--self' : ''}">
           <div class="podium-card__medal">${MEDALS[i] ?? ''}</div>
-          <div class="podium-card__name">${escapeHtml(row.username)}</div>
+          <div class="podium-card__name">${escapeHtml(displayUsername(row.username))}</div>
           <div class="podium-card__headline">${escapeHtml(headline)}</div>
           <div class="podium-card__detail">${escapeHtml(detail)}</div>
         </div>
