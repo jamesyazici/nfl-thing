@@ -54,7 +54,11 @@ export async function render(panel, state) {
             return `<td class="other-picks-cell--forfeit">FORFEIT</td>`;
           }
           const label = pick.selection === 'TIE' ? 'TIE' : pick.selection === 'AWAY' ? g.away_team : g.home_team;
-          return `<td>${escapeHtml(label)}</td>`;
+          // Subtle background-only tint so it's easy to eyeball how lopsided
+          // a game's picks are at a glance — text color is untouched.
+          const sideClass =
+            pick.selection === 'AWAY' ? 'other-picks-cell--away' : pick.selection === 'HOME' ? 'other-picks-cell--home' : '';
+          return `<td class="${sideClass}">${escapeHtml(label)}</td>`;
         })
         .join('');
       return `<tr><td>${escapeHtml(g.away_team)} @ ${escapeHtml(g.home_team)}</td>${cells}</tr>`;
