@@ -114,6 +114,51 @@ a { color: var(--color-accent); }
 .btn--small { padding: 6px 10px; font-size: 0.85rem; }
 .btn--block { width: 100%; justify-content: center; }
 
+/* ------------------------------------------------------------- toggle */
+
+.toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.toggle-switch input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggle-switch__track {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.toggle-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--color-text-muted);
+  border-radius: 50%;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.toggle-switch input:checked + .toggle-switch__track {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.toggle-switch input:checked + .toggle-switch__track .toggle-switch__thumb {
+  transform: translateX(16px);
+  background: #fff;
+}
+.toggle-switch__label { font-size: 0.85rem; color: var(--color-text-muted); }
+
 /* ------------------------------------------------------------------ tabs */
 
 .tabs {

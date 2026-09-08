@@ -8,15 +8,19 @@ import { formatRecord, formatProbabilityPercent } from '../shared/logic.js';
  * (see css/print.css) so a full 16-game week and a 13-game bye week both
  * land on exactly one page, just with more or less breathing room per row.
  * Each pick is its own full-width line (checkbox + name + stats inline)
- * rather than a 3-across grid, so a long name never has to wrap. Every box
- * always prints blank/unchecked, even for a week that's already been
- * submitted — this is meant as a fresh pen-and-paper form, not a receipt
- * of picks already made.
+ * rather than a 3-across grid, so a long name never has to wrap.
+ *
+ * `includePicks` (default false, toggled on My Picks only once a week is
+ * submitted): false prints every box blank, a fresh pen-and-paper form
+ * regardless of whether picks already exist; true instead checks each
+ * game's actual submitted pick (including an auto-forfeited one) and skips
+ * the "already started" hint entirely, since there's nothing hypothetical
+ * left to warn about once real picks exist for every game.
  */
-export function renderPrintSheet(state, weekData) {
+export function renderPrintSheet(state, weekData, includePicks = false) {
   const container = document.getElementById('print-sheet');
   if (!container) return;
-  const { games, oddsByGame } = weekData;
+  const { games, oddsByGame, picksByGame } = weekData;
 
   const header = `
     <div class="print-sheet__header">
@@ -24,7 +28,9 @@ export function renderPrintSheet(state, weekData) {
     </div>
   `;
 
-  const gameBlocks = games.map((g) => buildPrintGame(g, oddsByGame?.get(g.id)));
+  const gameBlocks = games.map((g) =>
+    buildPrintGame(g, oddsByGame?.get(g.id), includePicks ? picksByGame?.get(g.id) : null),
+  );
   const half = Math.ceil(gameBlocks.length / 2);
   const columnsHtml = `
     <div class="print-columns">
@@ -61,11 +67,25 @@ function statsText(game, side, odds) {
   return escapeHtml(`${record} · ${formatProbabilityPercent(prob)} · ${last5}`);
 }
 
-function buildPrintGame(game, odds) {
-  const started = new Date() >= new Date(game.kickoff_at);
+function buildPrintGame(game, odds, pick) {
   const awayName = teamShortName(game.away_team);
   const homeName = teamShortName(game.home_team);
 
+  // A real submitted pick (whether picked manually or auto-forfeited to
+  // HOME) always takes priority over the blank-form hint below — there's
+  // no "if submitted now" scenario left once it's actually been submitted.
+  if (pick) {
+    return `
+      <div class="print-game">
+        <div class="print-game__kickoff">${formatKickoff(game.kickoff_at)}</div>
+        ${pickLine('', pick.selection === 'AWAY', awayName, statsText(game, 'away', odds), 'Away')}
+        ${pickLine('print-pick--tie', pick.selection === 'TIE', 'TIE', '')}
+        ${pickLine('', pick.selection === 'HOME', homeName, statsText(game, 'home', odds), 'Home')}
+      </div>
+    `;
+  }
+
+  const started = new Date() >= new Date(game.kickoff_at);
   if (started) {
     return `
       <div class="print-game">
@@ -75,9 +95,7 @@ function buildPrintGame(game, odds) {
     `;
   }
 
-  // Always print with every box blank, regardless of whether this week has
-  // already been submitted — the printed sheet is meant as a fresh
-  // pen-and-paper form, not a record of picks already made.
+  // Blank for pen-and-paper use.
   return `
     <div class="print-game">
       <div class="print-game__kickoff">${formatKickoff(game.kickoff_at)}</div>

@@ -73,10 +73,23 @@ export async function render(panel, state) {
 }
 
 function buildHeaderHtml(week, submission) {
-  return `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-      <h1 style="margin:0;">Week ${week}</h1>
+  // The toggle only ever does anything once a week is submitted (there are
+  // no locked-in picks to show beforehand), so it's only shown then.
+  const printControlsHtml = submission
+    ? `
+      <label class="toggle-switch no-print">
+        <input type="checkbox" id="print-with-picks-toggle">
+        <span class="toggle-switch__track"><span class="toggle-switch__thumb"></span></span>
+        <span class="toggle-switch__label">Print with my picks?</span>
+      </label>
       <button type="button" class="btn btn--secondary btn--small no-print" id="print-sheet-btn">🖨 Print Pick Sheet</button>
+    `
+    : `<button type="button" class="btn btn--secondary btn--small no-print" id="print-sheet-btn">🖨 Print Pick Sheet</button>`;
+
+  return `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:12px;">
+      <h1 style="margin:0;">Week ${week}</h1>
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">${printControlsHtml}</div>
     </div>
     ${submission ? `<p style="color:var(--color-text-muted); margin-top:-8px;">Submitted ${escapeHtml(new Date(submission.submitted_at).toLocaleString('en-US', { timeZone: 'America/New_York', dateStyle: 'medium', timeStyle: 'short' }))} ET — <strong>LOCKED</strong></p>` : ''}
   `;
@@ -231,7 +244,8 @@ function wireHandlers(panel, state) {
   const printBtn = $('#print-sheet-btn', panel);
   if (printBtn) {
     printBtn.addEventListener('click', () => {
-      renderPrintSheet(state, loadedWeek);
+      const includePicks = $('#print-with-picks-toggle', panel)?.checked ?? false;
+      renderPrintSheet(state, loadedWeek, includePicks);
       window.print();
     });
   }
