@@ -8,12 +8,15 @@ import { formatRecord, formatProbabilityPercent } from '../shared/logic.js';
  * (see css/print.css) so a full 16-game week and a 13-game bye week both
  * land on exactly one page, just with more or less breathing room per row.
  * Each pick is its own full-width line (checkbox + name + stats inline)
- * rather than a 3-across grid, so a long name never has to wrap.
+ * rather than a 3-across grid, so a long name never has to wrap. Every box
+ * always prints blank/unchecked, even for a week that's already been
+ * submitted — this is meant as a fresh pen-and-paper form, not a receipt
+ * of picks already made.
  */
 export function renderPrintSheet(state, weekData) {
   const container = document.getElementById('print-sheet');
   if (!container) return;
-  const { games, oddsByGame, picksByGame } = weekData;
+  const { games, oddsByGame } = weekData;
 
   const header = `
     <div class="print-sheet__header">
@@ -21,7 +24,7 @@ export function renderPrintSheet(state, weekData) {
     </div>
   `;
 
-  const gameBlocks = games.map((g) => buildPrintGame(g, oddsByGame?.get(g.id), picksByGame?.get(g.id)));
+  const gameBlocks = games.map((g) => buildPrintGame(g, oddsByGame?.get(g.id)));
   const half = Math.ceil(gameBlocks.length / 2);
   const columnsHtml = `
     <div class="print-columns">
@@ -58,7 +61,7 @@ function statsText(game, side, odds) {
   return escapeHtml(`${record} · ${formatProbabilityPercent(prob)} · ${last5}`);
 }
 
-function buildPrintGame(game, odds, pick) {
+function buildPrintGame(game, odds) {
   const started = new Date() >= new Date(game.kickoff_at);
   const awayName = teamShortName(game.away_team);
   const homeName = teamShortName(game.home_team);
@@ -72,16 +75,15 @@ function buildPrintGame(game, odds, pick) {
     `;
   }
 
-  // If the week has already been submitted, show the recorded pick checked
-  // (spec §68 nice-to-have); otherwise every box is blank for pen-and-paper use.
-  const selection = pick && !pick.forfeited ? pick.selection : null;
-
+  // Always print with every box blank, regardless of whether this week has
+  // already been submitted — the printed sheet is meant as a fresh
+  // pen-and-paper form, not a record of picks already made.
   return `
     <div class="print-game">
       <div class="print-game__kickoff">${formatKickoff(game.kickoff_at)}</div>
-      ${pickLine('', selection === 'AWAY', awayName, statsText(game, 'away', odds), 'Away')}
-      ${pickLine('print-pick--tie', selection === 'TIE', 'TIE', '')}
-      ${pickLine('', selection === 'HOME', homeName, statsText(game, 'home', odds), 'Home')}
+      ${pickLine('', false, awayName, statsText(game, 'away', odds), 'Away')}
+      ${pickLine('print-pick--tie', false, 'TIE', '')}
+      ${pickLine('', false, homeName, statsText(game, 'home', odds), 'Home')}
     </div>
   `;
 }
