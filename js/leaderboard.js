@@ -5,8 +5,15 @@ import { formatPercent, formatAvgFinish } from '../shared/logic.js';
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 export async function render(panel, state) {
-  const [{ data: winRateTop3, error: winRateError }, { data: avgFinishTop3, error: avgFinishError }] =
-    await Promise.all([supabase.rpc('top3_win_rate'), supabase.rpc('top3_avg_finish')]);
+  const [
+    { data: winRateTop3, error: winRateError },
+    { data: avgFinishTop3, error: avgFinishError },
+    { data: weeklyRows, error: weeklyError },
+  ] = await Promise.all([
+    supabase.rpc('top3_win_rate'),
+    supabase.rpc('top3_avg_finish'),
+    supabase.rpc('weekly_leaderboard', { p_season: state.season, p_week: state.week }),
+  ]);
 
   if (winRateError || avgFinishError) {
     panel.innerHTML = `<p class="error-note">Could not load the leaderboard.</p>`;
@@ -14,6 +21,12 @@ export async function render(panel, state) {
   }
 
   panel.innerHTML = `
+    <section class="leaderboard-section">
+      <h2>Week ${state.week} Leaderboard</h2>
+      <p class="leaderboard-section__subtitle">Everyone, live — updates as games go final. Ties break by whoever submitted earliest.</p>
+      ${weeklyError ? `<p class="error-note">Could not load Week ${state.week}'s leaderboard.</p>` : renderWeeklyTable(weeklyRows, state)}
+    </section>
+
     <section class="leaderboard-section">
       <h2>Top 3 — Season Win Rate</h2>
       <p class="leaderboard-section__subtitle">Based on correct picks out of all games (skipped weeks count against you; a late auto-pick still grades on the real result).</p>
@@ -31,6 +44,73 @@ export async function render(panel, state) {
         detail: `Win Rate: ${formatPercent(Number(row.win_rate))}`,
       }))}
     </section>
+  `;
+}
+
+function formatSubmittedAt(iso) {
+  return new Date(iso).toLocaleString('en-US', {
+    timeZone: 'America/New_York',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function renderWeeklyTable(rows, state) {
+  if (!rows || rows.length === 0) {
+    return `<div class="empty-state">No family members yet.</div>`;
+  }
+
+  let place = 0;
+  const bodyRows = rows
+    .map((row) => {
+      const isSelf = row.normalized_username === state.profile?.normalized_username;
+      const rowClass = isSelf ? 'weekly-leaderboard__row--self' : '';
+
+      if (!row.submitted) {
+        return `
+          <tr class="${rowClass}">
+            <td>—</td>
+            <td>${escapeHtml(displayUsername(row.username))}</td>
+            <td class="weekly-leaderboard__muted" colspan="2">Not submitted</td>
+            <td class="weekly-leaderboard__muted">—</td>
+          </tr>
+        `;
+      }
+
+      place += 1;
+      const correct = Number(row.correct);
+      const decided = Number(row.decided);
+      const record = `${correct}-${decided - correct}`;
+      const upsets = Number(row.upset_wins);
+      return `
+        <tr class="${rowClass}">
+          <td>${place}</td>
+          <td>${escapeHtml(displayUsername(row.username))}</td>
+          <td>${record}</td>
+          <td>${upsets}</td>
+          <td>${escapeHtml(formatSubmittedAt(row.submitted_at))} ET</td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  return `
+    <div class="other-picks-table-wrap">
+      <table class="weekly-leaderboard">
+        <thead>
+          <tr>
+            <th>Place</th>
+            <th>User</th>
+            <th>Record</th>
+            <th>Upset Wins</th>
+            <th>Submitted</th>
+          </tr>
+        </thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </div>
   `;
 }
 

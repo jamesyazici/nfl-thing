@@ -371,6 +371,21 @@ table.other-picks td:first-child, table.other-picks th:first-child {
   background: var(--color-surface-raised);
 }
 
+table.weekly-leaderboard {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 420px;
+}
+table.weekly-leaderboard th, table.weekly-leaderboard td {
+  border: 1px solid var(--color-border);
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 0.88rem;
+}
+table.weekly-leaderboard th { background: var(--color-surface-raised); }
+.weekly-leaderboard__row--self td { background: rgba(63, 169, 245, 0.1); }
+.weekly-leaderboard__muted { color: var(--color-text-muted); font-style: italic; }
+
 .locked-panel {
   text-align: center;
   padding: 48px 16px;
