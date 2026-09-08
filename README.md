@@ -334,14 +334,17 @@ Kalshi.
   **Submit Picks** once. There's no picking Thursday's games separately from
   Sunday's.
 - **Late submission:** you can still submit after some games have started —
-  those are automatically marked FORFEIT, and you must fill in every game
-  that *hasn't* started yet before submitting.
+  those are automatically marked forfeited and default to the **home team**
+  (shown tagged "(auto)"), and you must fill in every game that *hasn't*
+  started yet before submitting. A forfeited pick isn't an automatic loss —
+  it grades normally against the real result, same as any other pick.
 - **Lock boundary:** a game is locked the instant `now() >= kickoff_at`,
   using the database's own clock — never the browser's. This is evaluated
   inside one atomic Postgres transaction (`submit_weekly_picks`), so there's
   no gap between "check if it started" and "save the pick."
-- **Forfeits count as incorrect**, including for the *whole* denominator —
-  16 games, 2 forfeits, 12 right ⇒ 12/16, not 12/14.
+- **A missing selection still counts against the whole denominator** —
+  e.g. a legacy/edge-case row with no selection at all still counts as
+  incorrect out of all 16 games, not excluded from the denominator.
 - **Skipping a week entirely:** once that week is fully final, you're scored
   0-for-N for it — there's no advantage to not submitting.
 - **Other Picks:** locked until you've submitted that same week yourself,
@@ -362,14 +365,17 @@ Kalshi.
 
 ## 13. Printing
 
-**My Picks → 🖨 Print Pick Sheet** builds a blank (or, if you've already
-submitted, pre-checked) paper version of the current week using the same
-data already on screen — no extra request, no PDF service. `css/print.css`
-hides all navigation/buttons and keeps the sheet to black/white/grayscale,
-one matchup per block with `break-inside: avoid` so a game never splits
-across a page. Use the browser's own "Save as PDF" if you want a file
-instead of a physical printout. Already-started games print as
-"ALREADY STARTED — FORFEITED IF SUBMITTED NOW" instead of checkboxes.
+**My Picks → 🖨 Print Pick Sheet** builds a paper version of the current
+week using the same data already on screen — no extra request, no PDF
+service. Every box always prints blank/unchecked, even for an
+already-submitted week, since it's meant as a fresh pen-and-paper form.
+`css/print.css` hides all navigation/buttons, keeps the sheet to
+black/white/grayscale, and lays games out in two fixed-height columns
+(with `break-inside: avoid` per game) sized to fit the whole week on one
+page regardless of how many games there are. Use the browser's own "Save
+as PDF" if you want a file instead of a physical printout. Already-started
+games print as "ALREADY STARTED — AUTO-PICKS \<HOME TEAM\> IF SUBMITTED
+NOW" instead of checkboxes.
 
 ---
 
@@ -404,8 +410,8 @@ yourself, since this project was built without a local Supabase/Docker
 environment available). The rest is easiest to verify by hand against your
 deployed project:
 
-- [ ] **Exact kickoff boundary** — submit a pick 1 second before kickoff (accepted) and confirm a game is forced to FORFEIT once its kickoff time passes, even mid-submission.
-- [ ] **Sunday late submit** — open the app after early games have started; confirm those show FORFEIT and only later games are selectable.
+- [ ] **Exact kickoff boundary** — submit a pick 1 second before kickoff (accepted) and confirm a game is forced to auto-pick HOME (forfeited, tagged "(auto)") once its kickoff time passes, even mid-submission.
+- [ ] **Sunday late submit** — open the app after early games have started; confirm those auto-picked HOME and only later games are selectable; confirm an auto-pick grades CORRECT when home actually wins, not automatically INCORRECT.
 - [ ] **Early submission stays locked** — submit Thursday before any kickoff; confirm you cannot change any pick afterward, including Sunday/Monday games.
 - [ ] **Other Picks before/after submission** — confirm the locked message before you submit, and the full matrix after.
 - [ ] **Tie game** — a TIE pick on a tied final game grades CORRECT.

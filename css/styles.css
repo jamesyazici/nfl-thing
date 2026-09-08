@@ -226,8 +226,9 @@ a { color: var(--color-accent); }
   border-radius: 8px;
 }
 .game-card__forfeit-banner {
-  background: rgba(229, 72, 77, 0.15);
-  color: var(--color-incorrect);
+  /* Amber, not red — an auto-pick isn't a guaranteed loss anymore. */
+  background: rgba(245, 166, 35, 0.15);
+  color: var(--color-warning);
 }
 .game-card__result-banner--correct { background: rgba(47, 191, 113, 0.15); color: var(--color-correct); }
 .game-card__result-banner--incorrect { background: rgba(229, 72, 77, 0.15); color: var(--color-incorrect); }

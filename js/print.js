@@ -70,7 +70,7 @@ function buildPrintGame(game, odds) {
     return `
       <div class="print-game">
         <div class="print-game__kickoff">${formatKickoff(game.kickoff_at)}</div>
-        <div class="print-game__started">${escapeHtml(awayName)} @ ${escapeHtml(homeName)} — ALREADY STARTED<br>FORFEITED IF SUBMITTED NOW</div>
+        <div class="print-game__started">${escapeHtml(awayName)} @ ${escapeHtml(homeName)} — ALREADY STARTED<br>AUTO-PICKS ${escapeHtml(homeName.toUpperCase())} IF SUBMITTED NOW</div>
       </div>
     `;
   }

@@ -1,20 +1,26 @@
--- submit_weekly_picks() forfeit/lock behavior (spec §41-§46/§97-A/§97-M) and
--- weekly_user_scores() grading, including the non-submitter penalty
--- (spec §53/§54). See picks_privacy.test.sql for how to run this.
+-- submit_weekly_picks() forfeit/lock behavior (spec §41-§46/§97-A/§97-M),
+-- the forfeit-defaults-to-HOME rule (auto-pick, grades normally rather than
+-- an automatic loss), and weekly_user_scores() grading, including the
+-- non-submitter penalty (spec §53/§54, unaffected by the auto-pick rule —
+-- there's no one to auto-pick on behalf of if they never submit at all).
+-- See picks_privacy.test.sql for how to run this.
 begin;
-select plan(7);
+select plan(10);
 
 select tests.create_user('00000000-0000-0000-0000-000000000011', 'Carol');
 select tests.create_user('00000000-0000-0000-0000-000000000012', 'Dave');
 
--- Two games: one already started (5 minutes ago), one not yet started (in a day).
+-- Three games: two already started (auto-forfeit candidates, one that will
+-- finalize AWAY-won and one that will finalize HOME-won, to prove the
+-- auto-pick isn't a blanket loss), one not yet started.
 insert into public.games (id, external_id, season, week, gameday, kickoff_at, away_team, home_team, status)
 values
-  ('30000000-0000-0000-0000-000000000001', 'test_2026_03_started', 2026, 3, current_date, now() - interval '5 minutes', 'NE', 'SEA', 'SCHEDULED'),
-  ('30000000-0000-0000-0000-000000000002', 'test_2026_03_upcoming', 2026, 3, current_date, now() + interval '1 day', 'BUF', 'MIA', 'SCHEDULED');
+  ('30000000-0000-0000-0000-000000000001', 'test_2026_03_started_away_wins', 2026, 3, current_date, now() - interval '5 minutes', 'NE', 'SEA', 'SCHEDULED'),
+  ('30000000-0000-0000-0000-000000000002', 'test_2026_03_upcoming', 2026, 3, current_date, now() + interval '1 day', 'BUF', 'MIA', 'SCHEDULED'),
+  ('30000000-0000-0000-0000-000000000003', 'test_2026_03_started_home_wins', 2026, 3, current_date, now() - interval '10 minutes', 'DAL', 'PHI', 'SCHEDULED');
 
--- Carol submits: tries to pick the already-started game (should be
--- force-forfeited regardless) and picks the upcoming game normally.
+-- Carol submits: the already-started games get force-completed regardless
+-- of what she sends for them; the upcoming game keeps her real selection.
 select is(
   (select forfeited from public.submit_weekly_picks(
     '00000000-0000-0000-0000-000000000011'::uuid, 2026, 3,
@@ -26,8 +32,20 @@ select is(
 
 select is(
   (select selection::text from public.picks where user_id = '00000000-0000-0000-0000-000000000011' and game_id = '30000000-0000-0000-0000-000000000001'),
-  null,
-  'the forfeited pick''s selection is stored as null, not whatever the client sent'
+  'HOME',
+  'a forfeited pick auto-defaults to HOME, not null, per the auto-pick rule'
+);
+
+select is(
+  (select forfeited from public.picks where user_id = '00000000-0000-0000-0000-000000000011' and game_id = '30000000-0000-0000-0000-000000000003'),
+  true,
+  'the second already-started game is also force-forfeited'
+);
+
+select is(
+  (select selection::text from public.picks where user_id = '00000000-0000-0000-0000-000000000011' and game_id = '30000000-0000-0000-0000-000000000003'),
+  'HOME',
+  'that forfeited pick also auto-defaults to HOME'
 );
 
 select is(
@@ -56,18 +74,30 @@ select is_empty(
   'a rejected submission does not leave a partial weekly_submissions row behind'
 );
 
--- Now finalize both games and confirm weekly_user_scores grades Carol
--- correctly and penalizes Dave (who never successfully submitted) as 0/2.
+-- Finalize all three games: game 1 AWAY wins (Carol's auto-pick of HOME is
+-- wrong there), game 2 HOME wins (Carol's real pick of HOME is right),
+-- game 3 HOME wins (Carol's auto-pick of HOME is right too - proving a
+-- forfeit is not an automatic loss). Carol should end up 2-for-3; Dave,
+-- who never submitted at all, is still graded 0-for-3.
 update public.games set status = 'FINAL', away_score = 20, home_score = 17, winner = 'AWAY'
   where id = '30000000-0000-0000-0000-000000000001';
 update public.games set status = 'FINAL', away_score = 14, home_score = 24, winner = 'HOME'
   where id = '30000000-0000-0000-0000-000000000002';
+update public.games set status = 'FINAL', away_score = 10, home_score = 27, winner = 'HOME'
+  where id = '30000000-0000-0000-0000-000000000003';
+
+select results_eq(
+  $$ select correct, counted from public.weekly_user_scores()
+     where user_id = '00000000-0000-0000-0000-000000000011' and season = 2026 and week = 3 $$,
+  $$ values (2::bigint, 3::bigint) $$,
+  'Carol''s auto-picked HOME grades correctly against the real result (right on game 3, wrong on game 1) rather than always incorrect'
+);
 
 select results_eq(
   $$ select correct, counted from public.weekly_user_scores()
      where user_id = '00000000-0000-0000-0000-000000000012' and season = 2026 and week = 3 $$,
-  $$ values (0::bigint, 2::bigint) $$,
-  'a user who never submitted a now-completed week is graded 0-for-N, not excluded'
+  $$ values (0::bigint, 3::bigint) $$,
+  'a user who never submitted a now-completed week is still graded 0-for-N - the auto-pick rule only applies within an actual submission'
 );
 
 select * from finish();

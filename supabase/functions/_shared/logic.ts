@@ -34,9 +34,9 @@ export function computeWinner(awayScore, homeScore) {
   return 'TIE';
 }
 
-export function gradePick({ selection, forfeited }, winner) {
+export function gradePick({ selection }, winner) {
   if (winner == null) return 'PENDING';
-  if (forfeited || selection == null) return 'INCORRECT';
+  if (selection == null) return 'INCORRECT';
   return selection === winner ? 'CORRECT' : 'INCORRECT';
 }
 

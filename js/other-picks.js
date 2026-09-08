@@ -50,10 +50,15 @@ export async function render(panel, state) {
             return `<td class="other-picks-cell--pending">NOT SUBMITTED</td>`;
           }
           const pick = pickLookup.get(`${u.id}:${g.id}`);
-          if (!pick || pick.forfeited || !pick.selection) {
+          if (!pick || !pick.selection) {
             return `<td class="other-picks-cell--forfeit">FORFEIT</td>`;
           }
-          const label = pick.selection === 'TIE' ? 'TIE' : pick.selection === 'AWAY' ? g.away_team : g.home_team;
+          // A forfeited pick (submitted after this game had already
+          // started) auto-defaulted to HOME and grades normally — it's
+          // shown like any other pick, just tagged "(auto)".
+          const label =
+            (pick.selection === 'TIE' ? 'TIE' : pick.selection === 'AWAY' ? g.away_team : g.home_team) +
+            (pick.forfeited ? ' (auto)' : '');
           // Subtle background-only tint so it's easy to eyeball how lopsided
           // a game's picks are at a glance — text color is untouched.
           const sideClass =

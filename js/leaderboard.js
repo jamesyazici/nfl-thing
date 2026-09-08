@@ -16,7 +16,7 @@ export async function render(panel, state) {
   panel.innerHTML = `
     <section class="leaderboard-section">
       <h2>Top 3 — Season Win Rate</h2>
-      <p class="leaderboard-section__subtitle">Based on correct picks out of all games (forfeits and skipped weeks count against you).</p>
+      <p class="leaderboard-section__subtitle">Based on correct picks out of all games (skipped weeks count against you; a late auto-pick still grades on the real result).</p>
       ${renderPodium(winRateTop3, state, (row) => ({
         headline: formatPercent(Number(row.win_rate)),
         detail: `${row.total_correct} / ${row.total_counted} · Avg Finish: ${formatAvgFinish(row.avg_finish == null ? null : Number(row.avg_finish))}`,
