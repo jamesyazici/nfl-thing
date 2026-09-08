@@ -18,6 +18,8 @@ import {
   derivePolymarketProbability,
   formatProbabilityPercent,
   normalizeDisplayProbabilities,
+  standardCompetitionRanks,
+  medalForRank,
 } from '../shared/logic.js';
 
 test('normalizeUsername trims and lowercases, preserves nothing else', () => {
@@ -132,4 +134,34 @@ test('normalizeDisplayProbabilities scales to a clean 100% split without fabrica
 
   const noTie = normalizeDisplayProbabilities({ away: 0.45, tie: null, home: 0.5 });
   assert.equal(noTie.tie, null, 'never fabricate a probability for a market that does not exist');
+});
+
+test('standardCompetitionRanks + medalForRank: ties skip the rank below them, per the user\'s own worked examples', () => {
+  // "2 people with 4 wins, 1 person with 3, everyone else has 1 or 2":
+  // both 4s tie for 1st; the lone 3 is 3rd (rank 2 is skipped), not 2nd.
+  const exampleA = [
+    { id: 'a', count: 4 }, { id: 'b', count: 4 }, { id: 'c', count: 3 },
+    { id: 'd', count: 2 }, { id: 'e', count: 1 },
+  ];
+  const ranksA = standardCompetitionRanks(exampleA);
+  assert.equal(ranksA.get('a'), 1);
+  assert.equal(ranksA.get('b'), 1);
+  assert.equal(ranksA.get('c'), 3);
+  assert.equal(medalForRank(ranksA.get('a')), '🥇');
+  assert.equal(medalForRank(ranksA.get('b')), '🥇');
+  assert.equal(medalForRank(ranksA.get('c')), '🥉');
+  assert.equal(medalForRank(ranksA.get('d')), null, 'below 3rd never medals, even with ranks skipped');
+
+  // "2 people with 4, 2 with 3, and rest have 2": two golds, two bronzes,
+  // nobody gets silver.
+  const exampleB = [
+    { id: 'a', count: 4 }, { id: 'b', count: 4 }, { id: 'c', count: 3 },
+    { id: 'd', count: 3 }, { id: 'e', count: 2 }, { id: 'f', count: 2 },
+  ];
+  const ranksB = standardCompetitionRanks(exampleB);
+  assert.equal(medalForRank(ranksB.get('a')), '🥇');
+  assert.equal(medalForRank(ranksB.get('b')), '🥇');
+  assert.equal(medalForRank(ranksB.get('c')), '🥉');
+  assert.equal(medalForRank(ranksB.get('d')), '🥉');
+  assert.equal(medalForRank(ranksB.get('e')), null);
 });

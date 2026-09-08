@@ -349,6 +349,10 @@ table.other-picks th, table.other-picks td {
   white-space: nowrap;
 }
 table.other-picks th { background: var(--color-surface-raised); }
+table.other-picks th.other-picks-header--medal {
+  background: rgba(245, 166, 35, 0.16);
+  border-bottom: 2px solid var(--color-warning);
+}
 table.other-picks td:first-child, table.other-picks th:first-child {
   text-align: left;
   position: sticky;

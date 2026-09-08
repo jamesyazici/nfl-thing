@@ -1,5 +1,10 @@
 import { supabase } from './supabase-client.js';
 import { escapeHtml, displayUsername } from './utils.js';
+import { standardCompetitionRanks, medalForRank } from '../shared/logic.js';
+
+// Don't crown a leader off just Thursday Night Football — wait until at
+// least this many games in the week are final.
+const MIN_FINAL_GAMES_FOR_MEDALS = 3;
 
 export async function render(panel, state) {
   const { season, week } = state;
@@ -46,7 +51,6 @@ export async function render(panel, state) {
   // per-cell green/red coloring below, so this always matches what's shown.
   const correctCounts = new Map(users.map((u) => [u.id, 0]));
 
-  const headerCells = users.map((u) => `<th>${escapeHtml(displayUsername(u.username))}</th>`).join('');
   const rows = games
     .map((g) => {
       const decided = g.status === 'FINAL' && g.winner;
@@ -88,6 +92,31 @@ export async function render(panel, state) {
     .map((u) => `<td>${submittedUserIds.has(u.id) ? correctCounts.get(u.id) : '—'}</td>`)
     .join('');
   const totalRow = `<tr class="other-picks-total-row"><td>Total</td>${totalCells}</tr>`;
+
+  // Medals for whoever's currently leading the week, once there's enough
+  // data to mean something (spec: at least 3 games final). Ranked only
+  // among people who've actually submitted — ties share a medal, per
+  // standard competition ranking (same rule as weekly finishing position).
+  const finalGamesCount = games.filter((g) => g.status === 'FINAL' && g.winner).length;
+  const medalById = new Map();
+  if (finalGamesCount >= MIN_FINAL_GAMES_FOR_MEDALS) {
+    const entries = users.filter((u) => submittedUserIds.has(u.id)).map((u) => ({ id: u.id, count: correctCounts.get(u.id) }));
+    const ranks = standardCompetitionRanks(entries);
+    for (const u of users) {
+      const medal = medalForRank(ranks.get(u.id));
+      if (medal) medalById.set(u.id, medal);
+    }
+  }
+
+  const headerCells = users
+    .map((u) => {
+      const medal = medalById.get(u.id);
+      const name = escapeHtml(displayUsername(u.username));
+      return medal
+        ? `<th class="other-picks-header--medal">${medal} <strong>${name}</strong></th>`
+        : `<th>${name}</th>`;
+    })
+    .join('');
 
   panel.innerHTML = `
     <h1>Week ${week} — Other Picks</h1>

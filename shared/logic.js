@@ -96,6 +96,29 @@ export function winRate(correct, counted) {
   return counted === 0 ? 0 : correct / counted;
 }
 
+/**
+ * Standard competition ranking (same semantics as SQL's `RANK() OVER
+ * (ORDER BY count DESC)`, already used for weekly finishing position):
+ * ties share a rank, and the rank below a tied group is skipped by however
+ * many people tied — e.g. two people tied for 1st means nobody is 2nd, the
+ * next distinct score is 3rd. `entries` is [{ id, count }, ...].
+ */
+export function standardCompetitionRanks(entries) {
+  const ranks = new Map();
+  for (const entry of entries) {
+    const rank = entries.filter((e) => e.count > entry.count).length + 1;
+    ranks.set(entry.id, rank);
+  }
+  return ranks;
+}
+
+const MEDALS_BY_RANK = { 1: '🥇', 2: '🥈', 3: '🥉' };
+
+/** null if this rank doesn't medal (only top 3 do, and a rank can be skipped past 3 by ties). */
+export function medalForRank(rank) {
+  return MEDALS_BY_RANK[rank] ?? null;
+}
+
 export function formatPercent(fraction, digits = 1) {
   return `${(fraction * 100).toFixed(digits)}%`;
 }
