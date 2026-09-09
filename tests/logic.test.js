@@ -55,7 +55,7 @@ test('computeWinner covers AWAY/HOME/TIE/pending', () => {
   assert.equal(computeWinner(null, null), null);
 });
 
-test('gradePick: a missing selection is always incorrect once graded (spec §52/§53)', () => {
+test('gradePick: forfeits and missing selections are always incorrect once graded (spec §52/§53)', () => {
   assert.equal(gradePick({ selection: 'AWAY', forfeited: false }, 'AWAY'), 'CORRECT');
   assert.equal(gradePick({ selection: 'HOME', forfeited: false }, 'AWAY'), 'INCORRECT');
   assert.equal(gradePick({ selection: 'TIE', forfeited: false }, 'TIE'), 'CORRECT');
@@ -63,10 +63,10 @@ test('gradePick: a missing selection is always incorrect once graded (spec §52/
   assert.equal(gradePick({ selection: 'AWAY', forfeited: false }, null), 'PENDING');
 });
 
-test('gradePick: a forfeited pick auto-defaults to HOME and grades normally, not automatically incorrect', () => {
-  // Per request: a game that started before someone submitted no longer
-  // locks in as a guaranteed loss - it grades like any other HOME pick.
-  assert.equal(gradePick({ selection: 'HOME', forfeited: true }, 'HOME'), 'CORRECT');
+test('gradePick: a forfeited pick never earns credit, even when the auto-picked HOME team wins', () => {
+  // Per explicit request, no exceptions: not submitting on time is always
+  // worth 0 points, regardless of the actual game outcome.
+  assert.equal(gradePick({ selection: 'HOME', forfeited: true }, 'HOME'), 'INCORRECT');
   assert.equal(gradePick({ selection: 'HOME', forfeited: true }, 'AWAY'), 'INCORRECT');
   assert.equal(gradePick({ selection: 'HOME', forfeited: true }, 'TIE'), 'INCORRECT');
 });

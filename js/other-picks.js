@@ -64,8 +64,8 @@ export async function render(panel, state) {
             return `<td class="other-picks-cell--forfeit">FORFEIT</td>`;
           }
           // A forfeited pick (submitted after this game had already
-          // started) auto-defaulted to HOME and grades normally — it's
-          // shown like any other pick, just tagged "(auto)".
+          // started) auto-defaults to HOME for the record — shown tagged
+          // "(auto)" — but never earns credit, no exceptions.
           const label =
             (pick.selection === 'TIE' ? 'TIE' : pick.selection === 'AWAY' ? g.away_team : g.home_team) +
             (pick.forfeited ? ' (auto)' : '');
@@ -77,7 +77,7 @@ export async function render(panel, state) {
           // or red (incorrect) — nothing else about the cell changes.
           let gradeClass = '';
           if (decided) {
-            const correct = pick.selection === g.winner;
+            const correct = !pick.forfeited && pick.selection === g.winner;
             gradeClass = correct ? 'other-picks-cell--correct' : 'other-picks-cell--incorrect';
             if (correct) correctCounts.set(u.id, (correctCounts.get(u.id) ?? 0) + 1);
           }

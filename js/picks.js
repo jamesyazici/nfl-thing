@@ -128,19 +128,19 @@ function statsColumnHtml(game, side, odds) {
 
 function resultBannerHtml(pick, game) {
   // A forfeited pick (submitted after this game had already started)
-  // auto-defaulted to HOME and grades normally from there — it's not an
-  // automatic loss. The "(auto)" tag is purely informational.
+  // auto-defaults to HOME for the record, but never earns credit — no
+  // exceptions, even if that team wins. The "(auto)" tag is informational.
   const label = pickLabel(pick, game);
   const autoTag = pick.forfeited && pick.selection ? ' (auto)' : '';
 
   if (game.status !== 'FINAL') {
     return `<div class="game-card__result-banner game-card__result-banner--pending">Your Pick: ${label}${autoTag} — PENDING</div>`;
   }
-  if (!pick.selection) {
-    return `<div class="game-card__result-banner game-card__result-banner--incorrect">Your Pick: FORFEIT ❌</div>`;
+  if (pick.forfeited || !pick.selection) {
+    return `<div class="game-card__result-banner game-card__result-banner--incorrect">Your Pick: ${label}${autoTag} ❌</div>`;
   }
   const correct = pick.selection === game.winner;
-  return `<div class="game-card__result-banner ${correct ? 'game-card__result-banner--correct' : 'game-card__result-banner--incorrect'}">Your Pick: ${label}${autoTag} ${correct ? '✅' : '❌'}</div>`;
+  return `<div class="game-card__result-banner ${correct ? 'game-card__result-banner--correct' : 'game-card__result-banner--incorrect'}">Your Pick: ${label} ${correct ? '✅' : '❌'}</div>`;
 }
 
 function pickLabel(pick, game) {
@@ -174,16 +174,15 @@ function buildGameCardHtml(game, odds, submission, pick) {
       ${resultBannerHtml(pick ?? { forfeited: true, selection: null }, game)}
     `;
   } else if (started) {
-    // Not a guaranteed loss anymore — submitting now auto-picks HOME for
-    // this game, so the preview shows that as already "selected" (still
-    // disabled; nothing here is editable).
+    // A guaranteed loss for this game — no exceptions, even though the
+    // record will show HOME as the auto-filled selection.
     picksSection = `
       <div class="game-card__picks">
         ${optionHtml('AWAY', awayName, true, false)}
         ${optionHtml('TIE', 'Tie', true, false)}
-        ${optionHtml('HOME', homeName, true, true)}
+        ${optionHtml('HOME', homeName, true, false)}
       </div>
-      <div class="game-card__forfeit-banner">GAME ALREADY STARTED — WILL AUTO-PICK ${escapeHtml(homeName.toUpperCase())}</div>
+      <div class="game-card__forfeit-banner">FORFEIT — GAME ALREADY STARTED</div>
     `;
   } else {
     picksSection = `

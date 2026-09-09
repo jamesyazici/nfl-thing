@@ -41,17 +41,16 @@ export function computeWinner(awayScore, homeScore) {
 }
 
 /**
- * Grade a single pick. A missing selection always grades as INCORRECT once
- * the winner is known (spec §52/§53) — it never inflates a user's
- * denominator-only "pending" bucket. A forfeited pick (submitted after that
- * game had already started) is NOT automatically incorrect — by request,
- * it auto-defaults to HOME at submission time and grades normally from
- * there; `forfeited` is purely a display flag at this point; it plays no
- * role in grading.
+ * Grade a single pick. A missing selection, or a forfeited one (submitted
+ * after that game had already started), always grades as INCORRECT once
+ * the winner is known (spec §52/§53) — no credit for not submitting on
+ * time, even if the auto-picked HOME team happens to win. `selection` on a
+ * forfeited pick is still stored (and still shown) for transparency, it
+ * just never earns points.
  */
-export function gradePick({ selection }, winner) {
+export function gradePick({ selection, forfeited }, winner) {
   if (winner == null) return 'PENDING';
-  if (selection == null) return 'INCORRECT';
+  if (forfeited || selection == null) return 'INCORRECT';
   return selection === winner ? 'CORRECT' : 'INCORRECT';
 }
 

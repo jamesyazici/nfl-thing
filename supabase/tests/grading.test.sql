@@ -1,18 +1,18 @@
--- submit_weekly_picks() forfeit/lock behavior (spec §41-§46/§97-A/§97-M),
--- the forfeit-defaults-to-HOME rule (auto-pick, grades normally rather than
--- an automatic loss), and weekly_user_scores() grading, including the
--- non-submitter penalty (spec §53/§54, unaffected by the auto-pick rule —
--- there's no one to auto-pick on behalf of if they never submit at all).
--- See picks_privacy.test.sql for how to run this.
+-- submit_weekly_picks() forfeit/lock behavior (spec §41-§46/§97-A/§97-M):
+-- a forfeited pick auto-fills HOME for the record, but per explicit
+-- request never earns credit, no exceptions, even if that team wins.
+-- Also covers weekly_user_scores()'s non-submitter penalty (spec §53/§54,
+-- a separate mechanism - there's no one to auto-pick on behalf of if they
+-- never submit at all). See picks_privacy.test.sql for how to run this.
 begin;
 select plan(10);
 
 select tests.create_user('00000000-0000-0000-0000-000000000011', 'Carol');
 select tests.create_user('00000000-0000-0000-0000-000000000012', 'Dave');
 
--- Three games: two already started (auto-forfeit candidates, one that will
--- finalize AWAY-won and one that will finalize HOME-won, to prove the
--- auto-pick isn't a blanket loss), one not yet started.
+-- Three games: two already started (forfeit candidates - one will finalize
+-- AWAY-won, one will finalize HOME-won, to prove a forfeit is incorrect
+-- either way), one not yet started.
 insert into public.games (id, external_id, season, week, gameday, kickoff_at, away_team, home_team, status)
 values
   ('30000000-0000-0000-0000-000000000001', 'test_2026_03_started_away_wins', 2026, 3, current_date, now() - interval '5 minutes', 'NE', 'SEA', 'SCHEDULED'),
@@ -74,11 +74,13 @@ select is_empty(
   'a rejected submission does not leave a partial weekly_submissions row behind'
 );
 
--- Finalize all three games: game 1 AWAY wins (Carol's auto-pick of HOME is
--- wrong there), game 2 HOME wins (Carol's real pick of HOME is right),
--- game 3 HOME wins (Carol's auto-pick of HOME is right too - proving a
--- forfeit is not an automatic loss). Carol should end up 2-for-3; Dave,
--- who never submitted at all, is still graded 0-for-3.
+-- Finalize all three games: game 1 AWAY wins (Carol's forfeited HOME is
+-- wrong there anyway), game 2 HOME wins (Carol's REAL pick of HOME, so
+-- this one counts), game 3 also HOME wins (Carol's forfeited HOME pick -
+-- this must NOT count despite matching the winner, per the no-exceptions
+-- rule). Carol should end up 1-for-3 (only game 2); Dave, who never
+-- submitted at all, is still graded 0-for-3 via the separate non-
+-- submitter mechanism.
 update public.games set status = 'FINAL', away_score = 20, home_score = 17, winner = 'AWAY'
   where id = '30000000-0000-0000-0000-000000000001';
 update public.games set status = 'FINAL', away_score = 14, home_score = 24, winner = 'HOME'
@@ -89,15 +91,15 @@ update public.games set status = 'FINAL', away_score = 10, home_score = 27, winn
 select results_eq(
   $$ select correct, counted from public.weekly_user_scores()
      where user_id = '00000000-0000-0000-0000-000000000011' and season = 2026 and week = 3 $$,
-  $$ values (2::bigint, 3::bigint) $$,
-  'Carol''s auto-picked HOME grades correctly against the real result (right on game 3, wrong on game 1) rather than always incorrect'
+  $$ values (1::bigint, 3::bigint) $$,
+  'a forfeited pick never earns credit even when the auto-filled HOME team wins (game 3) - only Carol''s real pick (game 2) counts'
 );
 
 select results_eq(
   $$ select correct, counted from public.weekly_user_scores()
      where user_id = '00000000-0000-0000-0000-000000000012' and season = 2026 and week = 3 $$,
   $$ values (0::bigint, 3::bigint) $$,
-  'a user who never submitted a now-completed week is still graded 0-for-N - the auto-pick rule only applies within an actual submission'
+  'a user who never submitted a now-completed week is still graded 0-for-N via the separate non-submitter mechanism'
 );
 
 select * from finish();
