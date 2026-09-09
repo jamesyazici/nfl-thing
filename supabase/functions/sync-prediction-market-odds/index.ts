@@ -24,19 +24,29 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: `Invalid PREDICTION_MARKET_PROVIDER: ${provider}` }, 500);
     }
 
-    // Only bother with games that haven't kicked off yet (spec §38
-    // "relevant upcoming games") — a FINAL game's odds are moot. There's
-    // no further date cutoff: each provider call below fetches its whole
-    // open-events list once per sync regardless of how many of our games
-    // it gets checked against, so restricting how far out we look doesn't
-    // save any API calls — it only delays showing odds Kalshi/Polymarket
-    // already have listed well ahead of kickoff.
-    const now = new Date();
+    const { data: settings, error: settingsError } = await admin
+      .from('app_settings')
+      .select('current_season')
+      .single();
+    if (settingsError || !settings) {
+      return jsonResponse({ error: 'app_settings not configured.' }, 500);
+    }
+
+    // Every non-final game for the current season - both upcoming (so
+    // odds are ready before kickoff) AND already in progress (so the
+    // weekly leaderboard's Expected Record can reflect the live in-game
+    // price instead of freezing at the last pre-kickoff number - Kalshi's
+    // NFL moneyline markets stay open and tradeable well past kickoff,
+    // closing only ~2 days after, long after the result is final). A
+    // FINAL game's odds are moot, so that's the only real exclusion.
+    // Scoped to the current season (rather than a kickoff_at cutoff) so a
+    // game that, for whatever reason, never got marked FINAL in a past
+    // season can't linger here and quietly burn API calls forever.
     const { data: games, error: gamesError } = await admin
       .from('games')
       .select('id, away_team, home_team, kickoff_at, status')
-      .neq('status', 'FINAL')
-      .gte('kickoff_at', now.toISOString());
+      .eq('season', settings.current_season)
+      .neq('status', 'FINAL');
 
     if (gamesError) return jsonResponse({ error: gamesError.message }, 500);
     if (!games || games.length === 0) {
