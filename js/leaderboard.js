@@ -1,6 +1,6 @@
 import { supabase } from './supabase-client.js';
 import { escapeHtml, displayUsername } from './utils.js';
-import { formatPercent, formatAvgFinish } from '../shared/logic.js';
+import { formatPercent, formatAvgFinish, formatExpectedRecord } from '../shared/logic.js';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -23,7 +23,7 @@ export async function render(panel, state) {
   panel.innerHTML = `
     <section class="leaderboard-section">
       <h2>Week ${state.week} Leaderboard</h2>
-      <p class="leaderboard-section__subtitle">Everyone, live — updates as games go final. Ties break by whoever submitted earliest.</p>
+      <p class="leaderboard-section__subtitle">Everyone, live — updates as games go final. Ties break by whoever submitted earliest. Expected Record is what the odds at submission time projected for your whole week's slate (unpriced picks assumed 50/50) — compare it to your real Record to see if you're beating the market.</p>
       ${weeklyError ? `<p class="error-note">Could not load Week ${state.week}'s leaderboard.</p>` : renderWeeklyTable(weeklyRows, state)}
     </section>
 
@@ -73,7 +73,7 @@ function renderWeeklyTable(rows, state) {
           <tr class="${rowClass}">
             <td>—</td>
             <td>${escapeHtml(displayUsername(row.username))}</td>
-            <td class="weekly-leaderboard__muted" colspan="2">Not submitted</td>
+            <td class="weekly-leaderboard__muted" colspan="3">Not submitted</td>
             <td class="weekly-leaderboard__muted">—</td>
           </tr>
         `;
@@ -83,6 +83,7 @@ function renderWeeklyTable(rows, state) {
       const correct = Number(row.correct);
       const decided = Number(row.decided);
       const record = `${correct}-${decided - correct}`;
+      const expectedRecord = formatExpectedRecord(row.expected_wins, Number(row.total_games));
       const upsets = Number(row.upset_wins);
       const allForfeitedNote = row.all_forfeited
         ? `<br><span class="weekly-leaderboard__muted" style="font-size:0.75em;">All picks forfeited to home teams</span>`
@@ -92,6 +93,7 @@ function renderWeeklyTable(rows, state) {
           <td>${place}</td>
           <td>${escapeHtml(displayUsername(row.username))}${allForfeitedNote}</td>
           <td>${record}</td>
+          <td>${escapeHtml(expectedRecord)}</td>
           <td>${upsets}</td>
           <td>${escapeHtml(formatSubmittedAt(row.submitted_at))} ET</td>
         </tr>
@@ -107,6 +109,7 @@ function renderWeeklyTable(rows, state) {
             <th>Place</th>
             <th>User</th>
             <th>Record</th>
+            <th>Expected Record</th>
             <th>Upset Wins</th>
             <th>Submitted</th>
           </tr>

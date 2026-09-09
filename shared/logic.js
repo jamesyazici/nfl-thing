@@ -71,6 +71,29 @@ export function formatRecord({ wins, losses, ties }) {
 }
 
 /**
+ * "Expected record" for a week: the sum of each pick's probability of
+ * being correct, across the whole week's slate — a standing projection to
+ * compare a real record against once the week wraps up. Not a whole
+ * number, so one decimal place ("8.7-6.3") instead of formatRecord's
+ * plain integers. No games at all, or no picks to project (expectedWins
+ * is null for a non-submitter — there's nothing to project, not a 50/50
+ * guess), reads as "—", same convention as formatAvgFinish.
+ */
+export function formatExpectedRecord(expectedWins, totalGames) {
+  if (!totalGames || expectedWins == null) return '—';
+  // Round wins first, then derive losses from that ROUNDED value (not
+  // independently round the raw wins and raw losses) - two independent
+  // roundings can each go their own way at a .x5 boundary (e.g. 8.25 of 16
+  // rounding to "8.3" while 16 - 8.25 = 7.75 separately rounds to "7.8",
+  // displaying as "8.3-7.8" which doesn't even add up to 16). Deriving the
+  // second half from the first guarantees the two halves always sum to
+  // totalGames exactly, same as a real record always would.
+  const wins = Number(Number(expectedWins).toFixed(1));
+  const losses = (totalGames - wins).toFixed(1);
+  return `${wins.toFixed(1)}-${losses}`;
+}
+
+/**
  * Given a team's chronological prior-game results ('W'/'L'/'T') entering a
  * matchup, return both the record and the Last-5 string in one pass.
  */

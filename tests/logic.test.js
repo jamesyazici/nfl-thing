@@ -9,6 +9,7 @@ import {
   gradePick,
   buildLast5,
   formatRecord,
+  formatExpectedRecord,
   computeRecordAndLast5,
   winRate,
   formatPercent,
@@ -84,6 +85,30 @@ test('formatRecord omits ties when zero, includes them otherwise (spec §22)', (
   assert.equal(formatRecord({ wins: 3, losses: 0, ties: 0 }), '3-0');
   assert.equal(formatRecord({ wins: 3, losses: 1, ties: 1 }), '3-1-1');
   assert.equal(formatRecord({ wins: 0, losses: 0, ties: 0 }), '0-0');
+});
+
+test('formatExpectedRecord sums pick probabilities into a decimal record, and reads as "—" with no games or no picks to project', () => {
+  assert.equal(formatExpectedRecord(8.7, 16), '8.7-7.3');
+  assert.equal(formatExpectedRecord(0.5, 2), '0.5-1.5');
+  // Two games picked at 0.35 and 0.45: 0.8 expected wins, 1.2 expected losses.
+  assert.equal(formatExpectedRecord(0.35 + 0.45, 2), '0.8-1.2');
+  assert.equal(formatExpectedRecord(0, 0), '—');
+  // A non-submitter has no picks at all - null, not a fabricated 50/50 guess.
+  assert.equal(formatExpectedRecord(null, 16), '—');
+});
+
+test('formatExpectedRecord: the two halves always sum to totalGames exactly, even at a .x5 rounding boundary', () => {
+  // 8.25 is exactly halfway between 8.2 and 8.3; rounding wins and losses
+  // independently could show "8.3-7.8" (sums to 16.1, not 16) - losses
+  // must be derived from the already-rounded wins instead.
+  assert.equal(formatExpectedRecord(8.25, 16), '8.3-7.7');
+  for (let totalGames = 1; totalGames <= 18; totalGames++) {
+    for (let i = 0; i <= totalGames * 20; i++) {
+      const wins = i / 20;
+      const [w, l] = formatExpectedRecord(wins, totalGames).split('-').map(Number);
+      assert.equal(Math.round((w + l) * 10) / 10, totalGames, `${wins}/${totalGames} -> ${w}-${l}`);
+    }
+  }
 });
 
 test('computeRecordAndLast5 combines both from one chronological result list', () => {

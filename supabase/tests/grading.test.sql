@@ -6,7 +6,7 @@
 -- of if they never submit at all). See picks_privacy.test.sql for how to
 -- run this.
 begin;
-select plan(9);
+select plan(11);
 
 select tests.create_user('00000000-0000-0000-0000-000000000011', 'Carol');
 select tests.create_user('00000000-0000-0000-0000-000000000012', 'Dave');
@@ -88,6 +88,28 @@ select results_eq(
      where user_id = '00000000-0000-0000-0000-000000000012' and season = 2026 and week = 3 $$,
   $$ values (0::bigint, 2::bigint) $$,
   'a user who never submitted a now-completed week is still graded 0-for-N via the separate non-submitter mechanism'
+);
+
+-- Expected record (weekly_leaderboard's expected_wins/total_games):
+-- Carol's forfeited game-1 pick contributes 0 (never earns credit, no
+-- exceptions), and her real game-2 pick has no prediction_market_odds row
+-- in this test at all, so it falls back to the neutral 0.5 rather than
+-- being skipped or skewing the total - 0 + 0.5 = 0.5 expected wins out of
+-- the week's 2 games, regardless of how either game actually turned out.
+select results_eq(
+  $$ select expected_wins, total_games from public.weekly_leaderboard(2026, 3)
+     where user_id = '00000000-0000-0000-0000-000000000011' $$,
+  $$ values (0.5::numeric, 2::bigint) $$,
+  'a forfeit contributes 0 and an unpriced real pick falls back to 0.5 - Carol projects 0.5 expected wins out of 2'
+);
+
+-- Dave never submitted at all - expected_wins must be null (nothing to
+-- project), never a fabricated 50/50 guess across his non-existent picks.
+select results_eq(
+  $$ select expected_wins from public.weekly_leaderboard(2026, 3)
+     where user_id = '00000000-0000-0000-0000-000000000012' $$,
+  $$ values (null::numeric) $$,
+  'a non-submitter has null expected_wins, not a fabricated 0.5-per-game guess'
 );
 
 select * from finish();
