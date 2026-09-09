@@ -128,16 +128,14 @@ function statsColumnHtml(game, side, odds) {
 
 function resultBannerHtml(pick, game) {
   // A forfeited pick (submitted after this game had already started)
-  // auto-defaults to HOME for the record, but never earns credit — no
-  // exceptions, even if that team wins. The "(auto)" tag is informational.
+  // stores no selection at all and never earns credit, no exceptions.
   const label = pickLabel(pick, game);
-  const autoTag = pick.forfeited && pick.selection ? ' (auto)' : '';
 
   if (game.status !== 'FINAL') {
-    return `<div class="game-card__result-banner game-card__result-banner--pending">Your Pick: ${label}${autoTag} — PENDING</div>`;
+    return `<div class="game-card__result-banner game-card__result-banner--pending">Your Pick: ${label} — PENDING</div>`;
   }
   if (pick.forfeited || !pick.selection) {
-    return `<div class="game-card__result-banner game-card__result-banner--incorrect">Your Pick: ${label}${autoTag} ❌</div>`;
+    return `<div class="game-card__result-banner game-card__result-banner--incorrect">Your Pick: FORFEIT ❌</div>`;
   }
   const correct = pick.selection === game.winner;
   return `<div class="game-card__result-banner ${correct ? 'game-card__result-banner--correct' : 'game-card__result-banner--incorrect'}">Your Pick: ${label} ${correct ? '✅' : '❌'}</div>`;
@@ -174,8 +172,8 @@ function buildGameCardHtml(game, odds, submission, pick) {
       ${resultBannerHtml(pick ?? { forfeited: true, selection: null }, game)}
     `;
   } else if (started) {
-    // A guaranteed loss for this game — no exceptions, even though the
-    // record will show HOME as the auto-filled selection.
+    // A guaranteed loss for this game, no exceptions — no team gets
+    // recorded either, since it can never earn credit.
     picksSection = `
       <div class="game-card__picks">
         ${optionHtml('AWAY', awayName, true, false)}

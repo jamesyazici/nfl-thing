@@ -60,15 +60,12 @@ export async function render(panel, state) {
             return `<td class="other-picks-cell--pending">NOT SUBMITTED</td>`;
           }
           const pick = pickLookup.get(`${u.id}:${g.id}`);
+          // A forfeited pick stores no selection at all (never earns
+          // credit either way, no exceptions), so this also covers it.
           if (!pick || !pick.selection) {
             return `<td class="other-picks-cell--forfeit">FORFEIT</td>`;
           }
-          // A forfeited pick (submitted after this game had already
-          // started) auto-defaults to HOME for the record — shown tagged
-          // "(auto)" — but never earns credit, no exceptions.
-          const label =
-            (pick.selection === 'TIE' ? 'TIE' : pick.selection === 'AWAY' ? g.away_team : g.home_team) +
-            (pick.forfeited ? ' (auto)' : '');
+          const label = pick.selection === 'TIE' ? 'TIE' : pick.selection === 'AWAY' ? g.away_team : g.home_team;
           // Subtle background-only tint so it's easy to eyeball how lopsided
           // a game's picks are at a glance.
           const sideClass =
@@ -77,7 +74,7 @@ export async function render(panel, state) {
           // or red (incorrect) — nothing else about the cell changes.
           let gradeClass = '';
           if (decided) {
-            const correct = !pick.forfeited && pick.selection === g.winner;
+            const correct = pick.selection === g.winner;
             gradeClass = correct ? 'other-picks-cell--correct' : 'other-picks-cell--incorrect';
             if (correct) correctCounts.set(u.id, (correctCounts.get(u.id) ?? 0) + 1);
           }

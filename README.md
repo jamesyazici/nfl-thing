@@ -334,12 +334,11 @@ Kalshi.
   **Submit Picks** once. There's no picking Thursday's games separately from
   Sunday's.
 - **Late submission:** you can still submit after some games have started —
-  those are automatically marked forfeited and default to the **home team**
-  for the record (shown tagged "(auto)"), and you must fill in every game
-  that *hasn't* started yet before submitting. A forfeited pick **never
-  earns credit, no exceptions** — even if the auto-filled home team wins,
-  it still grades incorrect. Only the games that have actually started are
-  affected; anything not yet kicked off still needs (and gets) a real pick.
+  those are automatically marked forfeited (no team is recorded for them,
+  just shown as "FORFEIT"), and you must fill in every game that *hasn't*
+  started yet before submitting. A forfeited pick **never earns credit, no
+  exceptions**. Only the games that have actually started are affected;
+  anything not yet kicked off still needs (and gets) a real pick.
 - **Lock boundary:** a game is locked the instant `now() >= kickoff_at`,
   using the database's own clock — never the browser's. This is evaluated
   inside one atomic Postgres transaction (`submit_weekly_picks`), so there's
@@ -412,8 +411,8 @@ yourself, since this project was built without a local Supabase/Docker
 environment available). The rest is easiest to verify by hand against your
 deployed project:
 
-- [ ] **Exact kickoff boundary** — submit a pick 1 second before kickoff (accepted) and confirm a game is forced to forfeit (auto-fills HOME for the record, tagged "(auto)") once its kickoff time passes, even mid-submission.
-- [ ] **Sunday late submit** — open the app after early games have started; confirm those are forfeited (only later games are selectable) and grade INCORRECT no matter what, even if the auto-filled home team wins.
+- [ ] **Exact kickoff boundary** — submit a pick 1 second before kickoff (accepted) and confirm a game is forced to forfeit (no team recorded) once its kickoff time passes, even mid-submission.
+- [ ] **Sunday late submit** — open the app after early games have started; confirm those show FORFEIT (only later games are selectable) and always grade INCORRECT, no exceptions.
 - [ ] **Early submission stays locked** — submit Thursday before any kickoff; confirm you cannot change any pick afterward, including Sunday/Monday games.
 - [ ] **Other Picks before/after submission** — confirm the locked message before you submit, and the full matrix after.
 - [ ] **Tie game** — a TIE pick on a tied final game grades CORRECT.
