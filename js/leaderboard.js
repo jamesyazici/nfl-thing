@@ -23,7 +23,6 @@ export async function render(panel, state) {
   panel.innerHTML = `
     <section class="leaderboard-section">
       <h2>Week ${state.week} Leaderboard</h2>
-      <p class="leaderboard-section__subtitle">Everyone, live — updates as games go final. Ties break by whoever submitted earliest. Expected Record is what the odds at submission time projected for your whole week's slate (unpriced picks assumed 50/50) — compare it to your real Record to see if you're beating the market.</p>
       ${weeklyError ? `<p class="error-note">Could not load Week ${state.week}'s leaderboard.</p>` : renderWeeklyTable(weeklyRows, state)}
     </section>
 
