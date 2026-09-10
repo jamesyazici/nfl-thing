@@ -142,14 +142,19 @@ select results_eq(
   'a user who never submitted a now-completed week is still graded 0-for-N via the separate non-submitter mechanism'
 );
 
--- Checkpoint D: every game is now decided, so expected_wins must equal
--- the real correct count exactly (0 + 1 + 0 = 1) - no probability left
--- anywhere in the sum.
+-- Checkpoint D: now that EVERY game in the week is decided, expected_wins
+-- reverts to the pure pre-game projection (each pick's original snapshot,
+-- ignoring how the games actually turned out) rather than staying pinned
+-- to the real correct count - the whole point being a fixed "here's what
+-- we projected" benchmark to compare the final real record against.
+-- Crucially this uses game 3's ORIGINAL 0.30 snapshot, not the 0.70 live
+-- price from checkpoint B/C - once frozen, later live movement no longer
+-- matters: 0 (forfeit) + 0.5 (unpriced) + 0.30 (game 3's snapshot) = 0.80.
 select results_eq(
   $$ select expected_wins from public.weekly_leaderboard(2026, 3)
      where user_id = '00000000-0000-0000-0000-000000000011' $$,
-  $$ values (1::numeric) $$,
-  'checkpoint D: once every game is decided, expected_wins equals the real correct count exactly'
+  $$ values (0.80::numeric) $$,
+  'checkpoint D: once the whole week is decided, expected_wins reverts to the frozen pre-game projection (0.80), not the live/decided hybrid'
 );
 
 -- Dave never submitted at all - expected_wins must be null (nothing to
