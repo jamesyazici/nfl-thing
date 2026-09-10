@@ -84,14 +84,16 @@ function renderWeeklyTable(rows, state) {
       const record = `${correct}-${decided - correct}`;
       const expectedRecord = formatExpectedRecord(row.expected_wins, Number(row.total_games));
       const upsets = Number(row.upset_wins);
-      const allForfeitedNote = row.all_forfeited
-        ? `<br><span class="weekly-leaderboard__muted" style="font-size:0.75em;">All picks forfeited to home teams</span>`
-        : '';
+      const forfeited = Number(row.forfeited);
+      const forfeitNote =
+        forfeited > 0
+          ? ` <span class="weekly-leaderboard__forfeit-note">(${forfeited} game${forfeited === 1 ? '' : 's'} forfeited)</span>`
+          : '';
       return `
         <tr class="${rowClass}">
           <td>${place}</td>
-          <td>${escapeHtml(displayUsername(row.username))}${allForfeitedNote}</td>
-          <td>${record}</td>
+          <td>${escapeHtml(displayUsername(row.username))}</td>
+          <td>${record}${forfeitNote}</td>
           <td>${escapeHtml(expectedRecord)}</td>
           <td>${upsets}</td>
           <td>${escapeHtml(formatSubmittedAt(row.submitted_at))} ET</td>

@@ -129,13 +129,15 @@ function statsColumnHtml(game, side, odds) {
 function resultBannerHtml(pick, game) {
   // A forfeited pick (submitted after this game had already started)
   // stores no selection at all and never earns credit, no exceptions.
-  const label = pickLabel(pick, game);
+  // Keep it low-key — plain grey, no red, no ❌ — it's just a game they
+  // didn't get a pick in on time.
+  if (pick.forfeited || !pick.selection) {
+    return `<div class="game-card__result-banner game-card__result-banner--pending">No pick submitted</div>`;
+  }
 
+  const label = pickLabel(pick, game);
   if (game.status !== 'FINAL') {
     return `<div class="game-card__result-banner game-card__result-banner--pending">Your Pick: ${label} — PENDING</div>`;
-  }
-  if (pick.forfeited || !pick.selection) {
-    return `<div class="game-card__result-banner game-card__result-banner--incorrect">Your Pick: FORFEIT ❌</div>`;
   }
   const correct = pick.selection === game.winner;
   return `<div class="game-card__result-banner ${correct ? 'game-card__result-banner--correct' : 'game-card__result-banner--incorrect'}">Your Pick: ${label} ${correct ? '✅' : '❌'}</div>`;

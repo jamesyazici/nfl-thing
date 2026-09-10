@@ -62,8 +62,9 @@ export async function render(panel, state) {
           const pick = pickLookup.get(`${u.id}:${g.id}`);
           // A forfeited pick stores no selection at all (never earns
           // credit either way, no exceptions), so this also covers it.
+          // Shown as a plain dash — no team was recorded, nothing to grade.
           if (!pick || !pick.selection) {
-            return `<td class="other-picks-cell--forfeit">FORFEIT</td>`;
+            return `<td class="other-picks-cell--forfeit">—</td>`;
           }
           const label = pick.selection === 'TIE' ? 'TIE' : pick.selection === 'AWAY' ? g.away_team : g.home_team;
           // Subtle background-only tint so it's easy to eyeball how lopsided
