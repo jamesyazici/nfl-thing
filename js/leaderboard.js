@@ -72,7 +72,7 @@ function renderWeeklyTable(rows, state) {
           <tr class="${rowClass}">
             <td>—</td>
             <td>${escapeHtml(displayUsername(row.username))}</td>
-            <td class="weekly-leaderboard__muted" colspan="3">Not submitted</td>
+            <td class="weekly-leaderboard__muted" colspan="4">Not submitted</td>
             <td class="weekly-leaderboard__muted">—</td>
           </tr>
         `;
@@ -82,6 +82,7 @@ function renderWeeklyTable(rows, state) {
       const correct = Number(row.correct);
       const decided = Number(row.decided);
       const record = `${correct}-${decided - correct}`;
+      const winRate = decided > 0 ? formatPercent(correct / decided) : '—';
       const expectedRecord = formatExpectedRecord(row.expected_wins, Number(row.total_games));
       const upsets = Number(row.upset_wins);
       const forfeited = Number(row.forfeited);
@@ -94,6 +95,7 @@ function renderWeeklyTable(rows, state) {
           <td>${place}</td>
           <td>${escapeHtml(displayUsername(row.username))}</td>
           <td>${record}${forfeitNote}</td>
+          <td>${escapeHtml(winRate)}</td>
           <td>${escapeHtml(expectedRecord)}</td>
           <td>${upsets}</td>
           <td>${escapeHtml(formatSubmittedAt(row.submitted_at))} ET</td>
@@ -110,6 +112,7 @@ function renderWeeklyTable(rows, state) {
             <th>Place</th>
             <th>User</th>
             <th>Record</th>
+            <th>Win Rate</th>
             <th>Expected Record</th>
             <th>Upset Wins</th>
             <th>Submitted</th>

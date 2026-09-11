@@ -86,8 +86,19 @@ export async function render(panel, state) {
     })
     .join('');
 
+  const finalGamesCount = games.filter((g) => g.status === 'FINAL' && g.winner).length;
+
   const totalCells = users
-    .map((u) => `<td>${submittedUserIds.has(u.id) ? correctCounts.get(u.id) : '—'}</td>`)
+    .map((u) => {
+      if (!submittedUserIds.has(u.id)) return `<td>—</td>`;
+      const wins = correctCounts.get(u.id) ?? 0;
+      // Small, subtle personal win rate right after the win count — no
+      // parenthetical at all until there's at least one decided game to
+      // rate against, rather than showing a hollow "(0%)".
+      const rateNote =
+        finalGamesCount > 0 ? ` <span class="other-picks-total-rate">(${formatPercent(wins / finalGamesCount)})</span>` : '';
+      return `<td>${wins}${rateNote}</td>`;
+    })
     .join('');
   const totalRow = `<tr class="other-picks-total-row"><td>Total</td>${totalCells}</tr>`;
 
@@ -95,7 +106,6 @@ export async function render(panel, state) {
   // data to mean something (spec: at least 3 games final). Ranked only
   // among people who've actually submitted — ties share a medal, per
   // standard competition ranking (same rule as weekly finishing position).
-  const finalGamesCount = games.filter((g) => g.status === 'FINAL' && g.winner).length;
   const medalById = new Map();
   if (finalGamesCount >= MIN_FINAL_GAMES_FOR_MEDALS) {
     const entries = users.filter((u) => submittedUserIds.has(u.id)).map((u) => ({ id: u.id, count: correctCounts.get(u.id) }));
