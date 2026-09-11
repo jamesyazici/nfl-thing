@@ -22,7 +22,10 @@ export async function render(panel, state) {
 
   panel.innerHTML = `
     <section class="leaderboard-section">
-      <h2>Week ${state.week} Leaderboard</h2>
+      <div class="leaderboard-section__heading">
+        <h2>Week ${state.week} Leaderboard</h2>
+        <span class="leaderboard-section__winrate">Total win rate: ${familyWinRateText(weeklyRows)}</span>
+      </div>
       ${weeklyError ? `<p class="error-note">Could not load Week ${state.week}'s leaderboard.</p>` : renderWeeklyTable(weeklyRows, state)}
     </section>
 
@@ -44,6 +47,21 @@ export async function render(panel, state) {
       }))}
     </section>
   `;
+}
+
+// Whole-family win rate for the week: every submitted user's correct
+// picks out of every submitted user's decided games (a forfeit counts
+// against the denominator like everywhere else — never excluded). Same
+// rule and same "—" until any game is decided as the Other Picks tab's
+// version of this stat, just sourced from weekly_leaderboard()'s rows
+// (which already carry correct/decided) instead of raw games/picks.
+function familyWinRateText(rows) {
+  const submittedRows = (rows ?? []).filter((r) => r.submitted);
+  const decided = Number(rows?.[0]?.decided ?? 0);
+  const graded = decided * submittedRows.length;
+  if (graded <= 0) return '—';
+  const wins = submittedRows.reduce((sum, r) => sum + Number(r.correct), 0);
+  return formatPercent(wins / graded);
 }
 
 function formatSubmittedAt(iso) {

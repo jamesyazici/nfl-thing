@@ -138,8 +138,10 @@ export async function render(panel, state) {
   const familyWinRate = familyGraded > 0 ? formatPercent(familyWins / familyGraded) : '—';
 
   panel.innerHTML = `
-    <h1>Week ${week} — Other Picks</h1>
-    <p class="other-picks-winrate">Total win rate: ${familyWinRate}</p>
+    <div class="other-picks-heading">
+      <h1>Week ${week} — Other Picks</h1>
+      <span class="other-picks-winrate">Total win rate: ${familyWinRate}</span>
+    </div>
     <div class="other-picks-table-wrap">
       <table class="other-picks">
         <thead><tr><th>Game</th>${headerCells}</tr></thead>

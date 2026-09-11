@@ -334,7 +334,16 @@ a { color: var(--color-accent); }
 
 /* ------------------------------------------------------------ other picks */
 
-.other-picks-winrate { color: var(--color-text-muted); font-size: 0.85rem; margin: -8px 0 12px; }
+.other-picks-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 12px;
+}
+.other-picks-heading h1 { margin: 0; }
+.other-picks-winrate { color: var(--color-text-muted); font-size: 0.85rem; white-space: nowrap; }
 .other-picks-total-rate { color: var(--color-text-muted); font-size: 0.75em; }
 .other-picks-table-wrap { overflow-x: auto; }
 table.other-picks {
@@ -400,6 +409,15 @@ table.weekly-leaderboard th { background: var(--color-surface-raised); }
 .leaderboard-section { margin-bottom: 32px; }
 .leaderboard-section h2 { margin-bottom: 4px; }
 .leaderboard-section__subtitle { color: var(--color-text-muted); font-size: 0.85rem; margin-top: 0; }
+.leaderboard-section__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.leaderboard-section__heading h2 { margin: 0 0 4px; }
+.leaderboard-section__winrate { color: var(--color-text-muted); font-size: 0.85rem; white-space: nowrap; }
 
 .podium {
   display: grid;
