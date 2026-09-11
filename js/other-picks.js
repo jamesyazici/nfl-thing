@@ -1,6 +1,6 @@
 import { supabase } from './supabase-client.js';
 import { escapeHtml, displayUsername } from './utils.js';
-import { standardCompetitionRanks, medalForRank } from '../shared/logic.js';
+import { standardCompetitionRanks, medalForRank, formatPercent } from '../shared/logic.js';
 
 // Don't crown a leader off just Thursday Night Football — wait until at
 // least this many games in the week are final.
@@ -116,8 +116,20 @@ export async function render(panel, state) {
     })
     .join('');
 
+  // Whole-family win rate: every submitted user's correct picks out of
+  // every submitted user's decided games (a forfeit counts against the
+  // denominator same as everywhere else in the app — never excluded).
+  // Recomputed from the same fetch as everything else on this panel each
+  // time it renders, so it's never a stale/cached number — there's just
+  // no separate polling loop, same as every other stat on this page.
+  const submittedUsers = users.filter((u) => submittedUserIds.has(u.id));
+  const familyWins = submittedUsers.reduce((sum, u) => sum + (correctCounts.get(u.id) ?? 0), 0);
+  const familyGraded = finalGamesCount * submittedUsers.length;
+  const familyWinRate = familyGraded > 0 ? formatPercent(familyWins / familyGraded) : '—';
+
   panel.innerHTML = `
     <h1>Week ${week} — Other Picks</h1>
+    <p class="other-picks-winrate">Total win rate: ${familyWinRate}</p>
     <div class="other-picks-table-wrap">
       <table class="other-picks">
         <thead><tr><th>Game</th>${headerCells}</tr></thead>
