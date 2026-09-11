@@ -9,10 +9,12 @@ export async function render(panel, state) {
     { data: winRateTop3, error: winRateError },
     { data: avgFinishTop3, error: avgFinishError },
     { data: weeklyRows, error: weeklyError },
+    { data: seasonStats },
   ] = await Promise.all([
     supabase.rpc('top3_win_rate'),
     supabase.rpc('top3_avg_finish'),
     supabase.rpc('weekly_leaderboard', { p_season: state.season, p_week: state.week }),
+    supabase.rpc('season_user_stats'),
   ]);
 
   if (winRateError || avgFinishError) {
@@ -24,13 +26,14 @@ export async function render(panel, state) {
     <section class="leaderboard-section">
       <div class="leaderboard-section__heading">
         <h2>Week ${state.week} Leaderboard</h2>
-        <span class="leaderboard-section__winrate">Total win rate: ${familyWinRateText(weeklyRows)}</span>
+        <span class="leaderboard-section__winrate">Everyone: ${familyRecordText(weeklyRows)}</span>
       </div>
       ${weeklyError ? `<p class="error-note">Could not load Week ${state.week}'s leaderboard.</p>` : renderWeeklyTable(weeklyRows, state)}
     </section>
 
     <section class="leaderboard-section">
       <h2>Top 3 — Season Win Rate</h2>
+      <p class="leaderboard-section__subtitle">Everyone: ${familySeasonRecordText(seasonStats)}</p>
       <p class="leaderboard-section__subtitle">Based on correct picks out of all games (skipped weeks count against you; a late auto-pick still grades on the real result).</p>
       ${renderPodium(winRateTop3, state, (row) => ({
         headline: formatPercent(Number(row.win_rate)),
@@ -49,19 +52,35 @@ export async function render(panel, state) {
   `;
 }
 
-// Whole-family win rate for the week: every submitted user's correct
+// "wins-losses (xx%)" in the same notation as every Record field
+// elsewhere in this app (correct-incorrect, never wins-out-of-total).
+function recordWithRate(wins, graded) {
+  if (graded <= 0) return '—';
+  return `${wins}-${graded - wins} (${formatPercent(wins / graded)})`;
+}
+
+// Whole-family record for the week: every submitted user's correct
 // picks out of every submitted user's decided games (a forfeit counts
 // against the denominator like everywhere else — never excluded). Same
 // rule and same "—" until any game is decided as the Other Picks tab's
 // version of this stat, just sourced from weekly_leaderboard()'s rows
 // (which already carry correct/decided) instead of raw games/picks.
-function familyWinRateText(rows) {
+function familyRecordText(rows) {
   const submittedRows = (rows ?? []).filter((r) => r.submitted);
   const decided = Number(rows?.[0]?.decided ?? 0);
-  const graded = decided * submittedRows.length;
-  if (graded <= 0) return '—';
   const wins = submittedRows.reduce((sum, r) => sum + Number(r.correct), 0);
-  return formatPercent(wins / graded);
+  return recordWithRate(wins, decided * submittedRows.length);
+}
+
+// Whole-family record for the SEASON so far, across every completed
+// week (season_user_stats() already only counts those - spec §56/§61),
+// including anyone who's ever skipped one (they're already synthesized
+// as 0-for-N inside weekly_user_scores, same non-submitter penalty as
+// everywhere else). "—" until at least one week has fully completed.
+function familySeasonRecordText(rows) {
+  const wins = (rows ?? []).reduce((sum, r) => sum + Number(r.total_correct), 0);
+  const graded = (rows ?? []).reduce((sum, r) => sum + Number(r.total_counted), 0);
+  return recordWithRate(wins, graded);
 }
 
 function formatSubmittedAt(iso) {

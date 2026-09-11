@@ -126,21 +126,23 @@ export async function render(panel, state) {
     })
     .join('');
 
-  // Whole-family win rate: every submitted user's correct picks out of
+  // Whole-family record: every submitted user's correct picks out of
   // every submitted user's decided games (a forfeit counts against the
   // denominator same as everywhere else in the app — never excluded).
+  // "wins-losses (xx%)", same notation as every Record field elsewhere.
   // Recomputed from the same fetch as everything else on this panel each
   // time it renders, so it's never a stale/cached number — there's just
   // no separate polling loop, same as every other stat on this page.
   const submittedUsers = users.filter((u) => submittedUserIds.has(u.id));
   const familyWins = submittedUsers.reduce((sum, u) => sum + (correctCounts.get(u.id) ?? 0), 0);
   const familyGraded = finalGamesCount * submittedUsers.length;
-  const familyWinRate = familyGraded > 0 ? formatPercent(familyWins / familyGraded) : '—';
+  const familyRecord =
+    familyGraded > 0 ? `${familyWins}-${familyGraded - familyWins} (${formatPercent(familyWins / familyGraded)})` : '—';
 
   panel.innerHTML = `
     <div class="other-picks-heading">
       <h1>Week ${week} — Other Picks</h1>
-      <span class="other-picks-winrate">Total win rate: ${familyWinRate}</span>
+      <span class="other-picks-winrate">Everyone: ${familyRecord}</span>
     </div>
     <div class="other-picks-table-wrap">
       <table class="other-picks">
