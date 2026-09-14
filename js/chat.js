@@ -5,10 +5,19 @@
 // delete anyone's) rather than through an Edge Function; the rules are
 // simple enough that a policy is the right amount of machinery, not a
 // server-side transaction like submit-picks needs.
+//
+// Consecutive messages from the same sender within GROUP_WINDOW_MS of
+// the one before them render under one shared username/time header
+// (spec follow-up) instead of repeating it per message. The whole list
+// is kept as a plain in-memory array and fully re-rendered into groups
+// on every insert/update/delete — simpler and less error-prone than
+// incrementally patching group boundaries in the DOM, and cheap at the
+// message volumes a family chat actually sees.
 import { supabase } from './supabase-client.js';
 import { escapeHtml, displayUsername, toast } from './utils.js';
 
 const HISTORY_LIMIT = 100;
+const GROUP_WINDOW_MS = 15 * 60 * 1000;
 
 // Must match the min-width in styles.css's desktop chat rules — above
 // this, the panel is always visible (a permanent sidebar), so there's no
@@ -19,6 +28,7 @@ let profilesById = new Map();
 let currentUserId = null;
 let isAdmin = false;
 let unreadCount = 0;
+let messages = []; // ordered oldest -> newest
 
 export async function init(state) {
   const toggle = document.getElementById('chat-toggle');
@@ -56,7 +66,7 @@ export async function init(state) {
     // optimistic local render, so there's no chance of a duplicate.
   });
 
-  const [{ data: profiles }, { data: messages }] = await Promise.all([
+  const [{ data: profiles }, { data: history }] = await Promise.all([
     supabase.from('profiles').select('id, username'),
     supabase
       .from('chat_messages')
@@ -66,17 +76,16 @@ export async function init(state) {
   ]);
   profilesById = new Map((profiles ?? []).map((p) => [p.id, p.username]));
 
-  list.innerHTML = '';
-  (messages ?? [])
-    .slice()
-    .reverse()
-    .forEach((m) => appendMessage(list, m));
+  messages = (history ?? []).slice().reverse();
+  renderAll(list);
   scrollToBottom(list);
 
   supabase
     .channel('chat_messages_changes')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
-      appendMessage(list, payload.new);
+      if (messages.some((m) => m.id === payload.new.id)) return;
+      messages.push(payload.new);
+      renderAll(list);
       scrollToBottom(list);
       // Someone else's message arriving while the panel isn't actually
       // visible (mobile, closed) — flag it on the toggle. Our own
@@ -86,10 +95,14 @@ export async function init(state) {
       }
     })
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages' }, (payload) => {
-      updateMessage(list, payload.new);
+      const i = messages.findIndex((m) => m.id === payload.new.id);
+      if (i === -1) return;
+      messages[i] = payload.new;
+      renderAll(list);
     })
     .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_messages' }, (payload) => {
-      removeMessage(list, payload.old.id);
+      messages = messages.filter((m) => m.id !== payload.old.id);
+      renderAll(list);
     })
     .subscribe();
 }
@@ -122,8 +135,55 @@ function formatTime(iso) {
   });
 }
 
-function messageInnerHtml(m) {
-  const username = escapeHtml(displayUsername(profilesById.get(m.user_id) ?? 'Unknown'));
+// Rebuilds the whole message list as visual groups: a shared
+// username/time header per run of same-sender messages that are each
+// within GROUP_WINDOW_MS of the previous one (a rolling gap, not a fixed
+// window from the group's start — three messages 14 minutes apart each
+// all group together even though the first and last are 28 minutes
+// apart). The header's time is always the group's LATEST message, so it
+// keeps advancing as more messages land in it. Editing never changes
+// grouping — only created_at does; edited_at is unrelated.
+function renderAll(list) {
+  const scrollTop = list.scrollTop;
+  list.innerHTML = '';
+
+  let groupEl = null;
+  let groupUserId = null;
+  let groupTimeMs = null;
+
+  for (const m of messages) {
+    const msgTimeMs = new Date(m.created_at).getTime();
+    const sameGroup = groupEl && groupUserId === m.user_id && msgTimeMs - groupTimeMs <= GROUP_WINDOW_MS;
+
+    if (!sameGroup) {
+      groupEl = document.createElement('div');
+      groupEl.className = 'chat-group';
+      const username = escapeHtml(displayUsername(profilesById.get(m.user_id) ?? 'Unknown'));
+      groupEl.innerHTML = `
+        <div class="chat-group__meta">
+          <strong>${username}</strong>
+          <span data-role="group-time" class="chat-group__time"></span>
+        </div>
+        <div data-role="group-messages" class="chat-group__messages"></div>
+      `;
+      list.appendChild(groupEl);
+      groupUserId = m.user_id;
+    }
+    groupTimeMs = msgTimeMs;
+    groupEl.querySelector('[data-role="group-time"]').textContent = formatTime(m.created_at);
+
+    const row = document.createElement('div');
+    row.className = 'chat-message';
+    row.dataset.messageId = m.id;
+    row.innerHTML = messageRowHtml(m);
+    wireMessageActions(row, m);
+    groupEl.querySelector('[data-role="group-messages"]').appendChild(row);
+  }
+
+  list.scrollTop = scrollTop;
+}
+
+function messageRowHtml(m) {
   const canEdit = m.user_id === currentUserId;
   const canDelete = m.user_id === currentUserId || isAdmin;
   const editedTag = m.edited_at ? ' <span class="chat-message__edited">(edited)</span>' : '';
@@ -137,34 +197,9 @@ function messageInnerHtml(m) {
       `
       : '';
   return `
-    <div class="chat-message__meta">
-      <strong>${username}</strong>
-      <span class="chat-message__time">${escapeHtml(formatTime(m.created_at))}</span>${editedTag}
-    </div>
-    <div class="chat-message__body">${escapeHtml(m.message)}</div>
+    <div class="chat-message__body">${escapeHtml(m.message)}${editedTag}</div>
     ${actionsHtml}
   `;
-}
-
-function appendMessage(list, m) {
-  if (list.querySelector(`[data-message-id="${m.id}"]`)) return;
-  const el = document.createElement('div');
-  el.className = 'chat-message';
-  el.dataset.messageId = m.id;
-  el.innerHTML = messageInnerHtml(m);
-  wireMessageActions(el, m);
-  list.appendChild(el);
-}
-
-function updateMessage(list, m) {
-  const el = list.querySelector(`[data-message-id="${m.id}"]`);
-  if (!el) return;
-  el.innerHTML = messageInnerHtml(m);
-  wireMessageActions(el, m);
-}
-
-function removeMessage(list, id) {
-  list.querySelector(`[data-message-id="${id}"]`)?.remove();
 }
 
 function wireMessageActions(el, m) {
@@ -209,7 +244,7 @@ function startEdit(el, m) {
       restore();
       return;
     }
-    // Realtime's UPDATE event re-renders this message with the
+    // Realtime's UPDATE event re-renders the whole list with the
     // server-computed edited_at — nothing else to do on success.
   });
 }
@@ -222,6 +257,6 @@ function deleteMessage(id) {
     .eq('id', id)
     .then(({ error }) => {
       if (error) toast('Could not delete that message. Please try again.', 'error');
-      // Realtime's DELETE event removes it from the DOM for everyone, including us.
+      // Realtime's DELETE event removes it for everyone, including us.
     });
 }
