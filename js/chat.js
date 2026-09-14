@@ -10,24 +10,34 @@ import { escapeHtml, displayUsername, toast } from './utils.js';
 
 const HISTORY_LIMIT = 100;
 
+// Must match the min-width in styles.css's desktop chat rules — above
+// this, the panel is always visible (a permanent sidebar), so there's no
+// such thing as "unread" there.
+const DESKTOP_BREAKPOINT = '(min-width: 1400px)';
+
 let profilesById = new Map();
 let currentUserId = null;
 let isAdmin = false;
+let unreadCount = 0;
 
 export async function init(state) {
   const toggle = document.getElementById('chat-toggle');
+  const toggleLabel = document.getElementById('chat-toggle-label');
+  const badge = document.getElementById('chat-unread-badge');
   const panel = document.getElementById('chat-panel');
   const closeBtn = document.getElementById('chat-close');
   const form = document.getElementById('chat-form');
   const input = document.getElementById('chat-input');
   const list = document.getElementById('chat-messages');
-  if (!toggle || !panel || !closeBtn || !form || !input || !list) return;
+  if (!toggle || !toggleLabel || !panel || !closeBtn || !form || !input || !list) return;
 
   currentUserId = state.session.user.id;
   isAdmin = !!state.profile?.is_admin;
 
-  toggle.addEventListener('click', () => setOpen(panel, toggle, !panel.classList.contains('chat-panel--open')));
-  closeBtn.addEventListener('click', () => setOpen(panel, toggle, false));
+  const isVisible = () => window.matchMedia(DESKTOP_BREAKPOINT).matches || panel.classList.contains('chat-panel--open');
+
+  toggle.addEventListener('click', () => setOpen(panel, toggle, toggleLabel, badge, !panel.classList.contains('chat-panel--open')));
+  closeBtn.addEventListener('click', () => setOpen(panel, toggle, toggleLabel, badge, false));
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -68,6 +78,12 @@ export async function init(state) {
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
       appendMessage(list, payload.new);
       scrollToBottom(list);
+      // Someone else's message arriving while the panel isn't actually
+      // visible (mobile, closed) — flag it on the toggle. Our own
+      // messages never count as unread.
+      if (payload.new.user_id !== currentUserId && !isVisible()) {
+        setUnread(badge, unreadCount + 1);
+      }
     })
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages' }, (payload) => {
       updateMessage(list, payload.new);
@@ -78,10 +94,18 @@ export async function init(state) {
     .subscribe();
 }
 
-function setOpen(panel, toggle, open) {
+function setOpen(panel, toggle, toggleLabel, badge, open) {
   panel.classList.toggle('chat-panel--open', open);
   toggle.setAttribute('aria-expanded', String(open));
-  toggle.textContent = open ? '💬 Close Chat' : '💬 Open Chat';
+  toggleLabel.textContent = open ? 'Close Chat' : 'Open Chat';
+  if (open) setUnread(badge, 0);
+}
+
+function setUnread(badge, count) {
+  unreadCount = count;
+  badge.hidden = count <= 0;
+  badge.textContent = count > 9 ? '9+' : String(count);
+  badge.closest('.chat-toggle')?.classList.toggle('chat-toggle--unread', count > 0);
 }
 
 function scrollToBottom(list) {
