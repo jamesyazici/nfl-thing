@@ -4,6 +4,7 @@ import { $, $all, toast, displayUsername } from './utils.js';
 import * as picksTab from './picks.js';
 import * as otherPicksTab from './other-picks.js';
 import * as leaderboardTab from './leaderboard.js';
+import * as chat from './chat.js';
 
 export const state = { session: null, profile: null, season: null, week: null };
 
@@ -25,6 +26,10 @@ async function init() {
   if (state.profile.is_admin) {
     $('#admin-link').hidden = false;
   }
+
+  // Independent of season/week — wired up even if app_settings isn't
+  // configured yet, so chat isn't blocked by an unrelated setup step.
+  chat.init(state).catch((err) => console.error('Chat failed to load:', err));
 
   const { data: settings, error: settingsError } = await supabase
     .from('app_settings')

@@ -33,6 +33,22 @@
 
 <div id="print-sheet"></div>
 
+<!-- Family chat: fixed bottom toggle + drawer on mobile, an always-open
+     right-side panel on desktop (see the min-width:1400px rules in
+     styles.css). Lives outside <main> so it persists across tab switches. -->
+<button id="chat-toggle" type="button" class="chat-toggle" aria-expanded="false">💬 Open Chat</button>
+<aside id="chat-panel" class="chat-panel" aria-label="Family chat">
+  <div class="chat-panel__header">
+    <span>💬 Family Chat</span>
+    <button id="chat-close" type="button" class="chat-panel__close" aria-label="Close chat">✕</button>
+  </div>
+  <div id="chat-messages" class="chat-panel__messages"></div>
+  <form id="chat-form" class="chat-panel__form">
+    <input id="chat-input" type="text" maxlength="2000" placeholder="Message the family…" autocomplete="off" required>
+    <button type="submit" class="btn btn--small">Send</button>
+  </form>
+</aside>
+
 <script type="module" src="js/app.js"></script>
 </body>
 </html>
