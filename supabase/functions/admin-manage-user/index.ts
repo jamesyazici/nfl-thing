@@ -1,14 +1,17 @@
 // admin-manage-user: deactivate/reactivate a claimed account, release a
-// claimed username back to unclaimed, or set a user's password directly
+// claimed username back to unclaimed, set a user's password directly
 // (spec §10, extended per request: admin can choose family members'
-// passwords instead of requiring self-service create-account.html).
+// passwords instead of requiring self-service create-account.html), or
+// set/clear a reminder-email address (spec follow-up — lives on
+// allowed_users, settable even before the username is claimed).
 // Admin-only.
 import { jsonResponse, handleOptions } from '../_shared/cors.ts';
 import { createAdminClient, getRequestUser, isAdminUser } from '../_shared/supabaseAdmin.ts';
 import { claimUsername } from '../_shared/accountClaim.ts';
 
-const VALID_ACTIONS = ['deactivate', 'reactivate', 'release', 'set_password'];
+const VALID_ACTIONS = ['deactivate', 'reactivate', 'release', 'set_password', 'set_email'];
 const MIN_PASSWORD_LENGTH = 8;
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 Deno.serve(async (req) => {
   const preflight = handleOptions(req);
@@ -27,7 +30,7 @@ Deno.serve(async (req) => {
   } catch {
     return jsonResponse({ error: 'Invalid request body.' }, 400);
   }
-  const { allowed_user_id, action, delete_auth_user = true, password } = body ?? {};
+  const { allowed_user_id, action, delete_auth_user = true, password, email } = body ?? {};
 
   if (!allowed_user_id || !VALID_ACTIONS.includes(action)) {
     return jsonResponse({ error: 'A valid allowed_user_id and action are required.' }, 400);
@@ -61,6 +64,19 @@ Deno.serve(async (req) => {
     const result = await claimUsername(admin, target.normalized_username, password);
     if (result.error) return jsonResponse({ error: result.error }, result.status);
     return jsonResponse({ success: true, mode: 'claimed' }, 200);
+  }
+
+  if (action === 'set_email') {
+    const trimmed = typeof email === 'string' ? email.trim() : '';
+    if (trimmed && !EMAIL_PATTERN.test(trimmed)) {
+      return jsonResponse({ error: "That doesn't look like a valid email address." }, 400);
+    }
+    const { error: updateError } = await admin
+      .from('allowed_users')
+      .update({ email: trimmed || null })
+      .eq('id', target.id);
+    if (updateError) return jsonResponse({ error: 'Could not save email.' }, 500);
+    return jsonResponse({ success: true }, 200);
   }
 
   if (action === 'deactivate' || action === 'reactivate') {

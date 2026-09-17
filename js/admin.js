@@ -130,7 +130,7 @@ async function renderUsersTable() {
   const el = $('#section-users');
   const { data: users, error } = await supabase
     .from('allowed_users')
-    .select('id, username, claimed, is_active, is_admin, created_at, claimed_at')
+    .select('id, username, claimed, is_active, is_admin, created_at, claimed_at, email')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -149,6 +149,12 @@ async function renderUsersTable() {
           ${u.is_admin ? '<span class="badge badge--admin">Admin</span>' : ''}
         </td>
         <td>
+          <div class="inline-form">
+            <input type="email" class="email-input" data-id="${u.id}" placeholder="not set" value="${escapeHtml(u.email ?? '')}" size="20">
+            <button class="btn btn--small btn--secondary" data-action="set_email" data-id="${u.id}">Save</button>
+          </div>
+        </td>
+        <td>
           <button class="btn btn--small" data-action="set_password" data-id="${u.id}" data-username="${escapeHtml(u.username)}">${u.claimed ? 'Reset Password' : 'Set Password'}</button>
           ${u.is_active
             ? `<button class="btn btn--small btn--secondary" data-action="deactivate" data-id="${u.id}">Deactivate</button>`
@@ -162,10 +168,16 @@ async function renderUsersTable() {
 
   el.innerHTML = `
     <h2>Reserved Usernames</h2>
-    <table class="admin-table">
-      <thead><tr><th>Username</th><th>Status</th><th>Actions</th></tr></thead>
-      <tbody>${rows || '<tr><td colspan="3">No usernames reserved yet.</td></tr>'}</tbody>
-    </table>
+    <p style="color:var(--color-text-muted); font-size:0.85rem;">
+      Email is only used to send a reminder if someone hasn't submitted picks yet (24h/5h/30min before the
+      first game, and 6h before the second) — never shown to other family members, never used to log in.
+    </p>
+    <div class="other-picks-table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Username</th><th>Status</th><th>Reminder Email</th><th>Actions</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="4">No usernames reserved yet.</td></tr>'}</tbody>
+      </table>
+    </div>
   `;
 
   $all('button[data-action]', el).forEach((btn) => {
@@ -185,11 +197,16 @@ async function renderUsersTable() {
         }
         payload.password = password;
       }
+      if (action === 'set_email') {
+        payload.email = $(`.email-input[data-id="${btn.dataset.id}"]`, el).value;
+      }
 
       try {
         const result = await callFunction('admin-manage-user', payload);
         if (action === 'set_password') {
           toast(result.mode === 'claimed' ? 'Account created — ready to log in.' : 'Password updated.', 'success');
+        } else if (action === 'set_email') {
+          toast('Email saved.', 'success');
         } else {
           toast('Done.', 'success');
         }
@@ -210,6 +227,7 @@ function renderSyncSection() {
     <div class="inline-form">
       <button type="button" class="btn btn--small" id="sync-games-btn">Sync NFL Games</button>
       <button type="button" class="btn btn--small" id="sync-odds-btn">Sync Prediction Market Odds</button>
+      <button type="button" class="btn btn--small" id="send-reminders-btn">Send Pick Reminders Now</button>
     </div>
     <p id="sync-status" style="color:var(--color-text-muted); font-size:0.85rem; margin-top:12px;"></p>
   `;
@@ -231,6 +249,20 @@ function renderSyncSection() {
     try {
       const result = await callFunction('sync-prediction-market-odds', {});
       statusEl.textContent = `Considered ${result.games_considered} games. Written: ${JSON.stringify(result.providers_written)}.`;
+    } catch (err) {
+      statusEl.textContent = `Failed: ${err.message}`;
+    }
+  });
+
+  $('#send-reminders-btn').addEventListener('click', async () => {
+    if (!confirm("Send a pick reminder email right now to everyone who hasn't submitted this week? This ignores the normal 24h/5h/30min/6h schedule and sends immediately.")) {
+      return;
+    }
+    statusEl.textContent = 'Sending reminder emails…';
+    try {
+      const result = await callFunction('send-pick-reminders', { force: true });
+      statusEl.textContent = `Sent ${result.sent} of ${result.candidates} eligible recipient(s) for Week ${result.week}.` +
+        (result.errors?.length ? ` ${result.errors.length} failed — check function logs.` : '');
     } catch (err) {
       statusEl.textContent = `Failed: ${err.message}`;
     }

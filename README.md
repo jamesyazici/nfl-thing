@@ -127,6 +127,9 @@ Nothing here needs a build step.
 | `KALSHI_API_BASE` | Optional override; default `https://external-api.kalshi.com/trade-api/v2` is a public, read-only, no-auth-required endpoint | only if you need to override |
 | `POLYMARKET_GAMMA_API_BASE` | Optional override; default `https://gamma-api.polymarket.com` is public, read-only, no-auth-required | only if you need to override |
 | `NFLVERSE_SCHEDULE_URL` | Optional override; default is the live nflverse schedule feed (see §10) | only if you need to override |
+| `SENDGRID_API_KEY` | For pick-reminder emails (see §8) — [sendgrid.com](https://sendgrid.com) → Settings → API Keys → Create API Key ("Mail Send" permission is enough) | `supabase secrets set SENDGRID_API_KEY=...` |
+| `REMINDER_FROM_EMAIL` | The single sender address you verified in SendGrid (Settings → Sender Authentication → Verify a Single Sender) — no domain purchase needed, just an inbox you control | `supabase secrets set REMINDER_FROM_EMAIL=you@example.com` |
+| `SITE_URL` | Your GitHub Pages URL (the link reminder emails point to) | `supabase secrets set SITE_URL=https://yourname.github.io/repo-name/` |
 
 Neither Kalshi nor Polymarket requires an API key for the read-only market
 data this app uses — no account signup needed for either. If a future API
@@ -207,6 +210,11 @@ Internally, Supabase Auth still runs on email+password under the hood, so
 `claim-account` builds a deterministic address like `mom@users.family-pickem.invalid`
 that Mom never sees or needs.
 
+The same **Reserved Usernames** table also has a **Reminder Email** field per
+person — a real address (Mom's actual inbox), used only to send a "you
+haven't submitted yet" nudge (see §8). It's unrelated to login, settable
+before or after the username is claimed, and only ever visible to admins.
+
 ---
 
 ## 7. Season configuration
@@ -247,7 +255,8 @@ select cron.schedule(
       'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'publishable_key'),
       'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
     ),
-    body := '{}'::jsonb
+    body := '{}'::jsonb,
+    timeout_milliseconds := 30000
   );
   $$
 );
@@ -263,17 +272,77 @@ select cron.schedule(
       'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'publishable_key'),
       'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
     ),
-    body := '{}'::jsonb
+    body := '{}'::jsonb,
+    timeout_milliseconds := 30000
+  );
+  $$
+);
+
+select cron.schedule(
+  'send-pick-reminders-every-10-min',
+  '*/10 * * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/send-pick-reminders',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'publishable_key'),
+      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
+    ),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 30000
   );
   $$
 );
 ```
 
-Running both jobs year-round is fine — they cheaply no-op outside season
-(no REG games to sync, no upcoming games to price). To stop a job:
-`select cron.unschedule('sync-nfl-games-every-10-min');`.
+The `timeout_milliseconds` on every job matters: `pg_net`'s default is only
+5 seconds, which is too short for `sync-prediction-market-odds`'s many
+sequential Kalshi calls — without it, that job silently fails roughly a
+quarter of the time. If you already created these jobs before this was
+added, unschedule and re-run the `cron.schedule(...)` calls above (a
+`select cron.unschedule('sync-nfl-games-every-10-min');` etc. first).
 
-You can also trigger either sync manually any time from `admin.html`.
+Running all three jobs year-round is fine — `send-pick-reminders` and the
+two syncs all cheaply no-op outside season/outside their checkpoint window.
+To stop a job: `select cron.unschedule('sync-nfl-games-every-10-min');`.
+
+You can also trigger any of the three manually any time from `admin.html`
+("Sync NFL Games" / "Sync Prediction Market Odds" / "Send Pick Reminders
+Now" — the last one ignores the normal schedule and sends immediately to
+everyone who hasn't submitted, useful for confirming SendGrid is wired up
+correctly).
+
+### Pick-reminder emails (checkpoints, and setting them up without a domain)
+
+`send-pick-reminders` emails anyone with a reminder email set (§6) who
+hasn't submitted picks yet for the current week, at four points relative to
+that week's first and second games (by kickoff order): 24 hours, 5 hours,
+and 30 minutes before the first game, and 6 hours before the second. Each
+checkpoint fires at most once per person per week — a log table
+(`pick_reminders_sent`) tracks that — and a checkpoint whose target instant
+has already passed by more than ~20 minutes (e.g. you're setting this up
+less than 24 hours before a game) simply never fires; there's nothing to
+undo or skip manually.
+
+Sending goes through [SendGrid](https://sendgrid.com)'s API rather than
+Supabase itself (Supabase doesn't send arbitrary custom emails). SendGrid's
+free tier (100/day, no credit card) is enough for a family-sized group, and
+you do **not** need to own a domain — verify a single sender address instead:
+
+1. Sign up at sendgrid.com, then **Settings → Sender Authentication → Verify
+   a Single Sender**. Fill in an email address you actually control (your
+   own inbox is fine) and confirm the verification link it sends you.
+2. **Settings → API Keys → Create API Key**, "Restricted Access" with at
+   least "Mail Send" permission.
+3. `supabase secrets set SENDGRID_API_KEY=...` (the key from step 2),
+   `supabase secrets set REMINDER_FROM_EMAIL=...` (the address you verified
+   in step 1), and `supabase secrets set SITE_URL=https://yourname.github.io/repo-name/`.
+4. Deploy the function (`supabase functions deploy send-pick-reminders`) and
+   add the cron job above.
+5. In `admin.html`, set a reminder email for each family member (this is
+   separate from their login — it's admin-only metadata, never shown to
+   other family members, never used to sign in).
 
 ---
 

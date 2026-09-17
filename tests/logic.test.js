@@ -21,6 +21,8 @@ import {
   normalizeDisplayProbabilities,
   standardCompetitionRanks,
   medalForRank,
+  computeDueCheckpoints,
+  REMINDER_GRACE_WINDOW_MS,
 } from '../shared/logic.js';
 
 test('normalizeUsername trims and lowercases, preserves nothing else', () => {
@@ -189,4 +191,57 @@ test('standardCompetitionRanks + medalForRank: ties skip the rank below them, pe
   assert.equal(medalForRank(ranksB.get('c')), '🥉');
   assert.equal(medalForRank(ranksB.get('d')), '🥉');
   assert.equal(medalForRank(ranksB.get('e')), null);
+});
+
+test('computeDueCheckpoints: fires each checkpoint exactly within its grace window', () => {
+  const kickoffs = ['2026-09-24T00:20:00.000Z', '2026-09-27T17:00:00.000Z']; // game1 Thu night, game2 Sun 1pm
+  const g1 = new Date(kickoffs[0]).getTime();
+  const g2 = new Date(kickoffs[1]).getTime();
+  const HOUR = 60 * 60 * 1000;
+  const MIN = 60 * 1000;
+
+  // Right at the target instant: due.
+  assert.deepEqual(
+    computeDueCheckpoints(kickoffs, g1 - 24 * HOUR).map((c) => c.id),
+    ['24h_before_g1'],
+  );
+  assert.deepEqual(
+    computeDueCheckpoints(kickoffs, g1 - 5 * HOUR).map((c) => c.id),
+    ['5h_before_g1'],
+  );
+  assert.deepEqual(
+    computeDueCheckpoints(kickoffs, g1 - 30 * MIN).map((c) => c.id),
+    ['30m_before_g1'],
+  );
+  assert.deepEqual(
+    computeDueCheckpoints(kickoffs, g2 - 6 * HOUR).map((c) => c.id),
+    ['6h_before_g2'],
+  );
+
+  // Still within the grace window after the target instant: still due.
+  assert.deepEqual(
+    computeDueCheckpoints(kickoffs, g1 - 24 * HOUR + 10 * MIN).map((c) => c.id),
+    ['24h_before_g1'],
+  );
+
+  // 1ms before the window opens, or past the grace window: not due.
+  assert.deepEqual(computeDueCheckpoints(kickoffs, g1 - 24 * HOUR - 1), []);
+  assert.deepEqual(computeDueCheckpoints(kickoffs, g1 - 24 * HOUR + REMINDER_GRACE_WINDOW_MS + 1), []);
+
+  // No second game this week (e.g. a bye-heavy or short week) - the
+  // 6h-before-g2 checkpoint simply never exists, no error either.
+  assert.deepEqual(computeDueCheckpoints([kickoffs[0]], g2 - 6 * HOUR), []);
+});
+
+test('computeDueCheckpoints: shipping less than 24h before kickoff safely skips already-past checkpoints', () => {
+  // Simulates exactly this feature's own rollout: "now" is only 2 hours
+  // before game1, well past the point where the 24h/5h checkpoints would
+  // have fired, and past even the 30-minute one. Nothing should fire for
+  // game 1 - only 6h-before-game-2 is still a live possibility, and only
+  // if that instant hasn't ALSO already passed.
+  const kickoffs = ['2026-09-24T00:20:00.000Z', '2026-09-27T17:00:00.000Z'];
+  const g1 = new Date(kickoffs[0]).getTime();
+  const HOUR = 60 * 60 * 1000;
+  const due = computeDueCheckpoints(kickoffs, g1 - 2 * HOUR);
+  assert.ok(!due.some((c) => c.gameIndex === 0), 'no first-game checkpoint fires this late');
 });

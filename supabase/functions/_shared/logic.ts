@@ -126,3 +126,21 @@ export function normalizeDisplayProbabilities(rawProbs) {
 export function normalizeTeamToken(s) {
   return String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
+
+export const REMINDER_CHECKPOINTS = [
+  { id: '24h_before_g1', gameIndex: 0, offsetMs: -24 * 60 * 60 * 1000, label: '24 hours until the first game' },
+  { id: '5h_before_g1', gameIndex: 0, offsetMs: -5 * 60 * 60 * 1000, label: '5 hours until the first game' },
+  { id: '30m_before_g1', gameIndex: 0, offsetMs: -30 * 60 * 1000, label: '30 minutes until the first game' },
+  { id: '6h_before_g2', gameIndex: 1, offsetMs: -6 * 60 * 60 * 1000, label: '6 hours until the second game' },
+];
+
+export const REMINDER_GRACE_WINDOW_MS = 20 * 60 * 1000;
+
+export function computeDueCheckpoints(kickoffTimesIso, nowMs) {
+  return REMINDER_CHECKPOINTS.filter((cp) => {
+    const kickoff = kickoffTimesIso[cp.gameIndex];
+    if (!kickoff) return false;
+    const target = new Date(kickoff).getTime() + cp.offsetMs;
+    return nowMs >= target && nowMs <= target + REMINDER_GRACE_WINDOW_MS;
+  });
+}

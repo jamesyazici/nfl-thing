@@ -211,3 +211,42 @@ export function normalizeDisplayProbabilities(rawProbs) {
 export function normalizeTeamToken(s) {
   return String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
+
+/**
+ * Pick-reminder email schedule (spec follow-up): 24h/5h/30min before the
+ * week's first game, and 6h before its second game, each aimed at anyone
+ * who hasn't submitted yet. gameIndex indexes into a week's games already
+ * sorted by kickoff_at ascending (0 = first game, 1 = second).
+ */
+export const REMINDER_CHECKPOINTS = [
+  { id: '24h_before_g1', gameIndex: 0, offsetMs: -24 * 60 * 60 * 1000, label: '24 hours until the first game' },
+  { id: '5h_before_g1', gameIndex: 0, offsetMs: -5 * 60 * 60 * 1000, label: '5 hours until the first game' },
+  { id: '30m_before_g1', gameIndex: 0, offsetMs: -30 * 60 * 1000, label: '30 minutes until the first game' },
+  { id: '6h_before_g2', gameIndex: 1, offsetMs: -6 * 60 * 60 * 1000, label: '6 hours until the second game' },
+];
+
+// How long a checkpoint stays "due" after its target instant — long enough
+// that a ~10-minute cron always catches it at least once, short enough
+// that the same run can't accidentally treat a long-past checkpoint as
+// due forever (the reminder-log table is the real dedupe guard; this is
+// just what makes a checkpoint eligible to be considered at all).
+export const REMINDER_GRACE_WINDOW_MS = 20 * 60 * 1000;
+
+/**
+ * Which checkpoints are due right now, given the week's games' kickoff
+ * times (ISO strings, already sorted ascending by kickoff_at). A
+ * checkpoint whose target instant is already more than
+ * REMINDER_GRACE_WINDOW_MS in the past never comes up again — this is
+ * exactly what makes "shipping this feature less than 24h before
+ * kickoff" safely skip the checkpoints that have already passed, with no
+ * special-casing: their target instant is simply outside the window by
+ * the time this ever runs.
+ */
+export function computeDueCheckpoints(kickoffTimesIso, nowMs) {
+  return REMINDER_CHECKPOINTS.filter((cp) => {
+    const kickoff = kickoffTimesIso[cp.gameIndex];
+    if (!kickoff) return false;
+    const target = new Date(kickoff).getTime() + cp.offsetMs;
+    return nowMs >= target && nowMs <= target + REMINDER_GRACE_WINDOW_MS;
+  });
+}
